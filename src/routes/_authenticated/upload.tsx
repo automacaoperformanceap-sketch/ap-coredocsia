@@ -1438,7 +1438,7 @@ function UploadPage() {
                 )}
                 <Button
                   size="sm"
-                  onClick={handleUploadAll}
+                  onClick={() => handleUploadAll()}
                   disabled={isUploading || !items.some((i) => i.status === "queued")}
                   className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
                 >
@@ -1615,7 +1615,7 @@ function UploadPage() {
             <div className="sticky bottom-4 z-10 mt-4 flex justify-end">
               <Button
                 size="sm"
-                onClick={handleUploadAll}
+                onClick={() => handleUploadAll()}
                 disabled={isUploading || !items.some((i) => i.status === "queued")}
                 className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
               >
