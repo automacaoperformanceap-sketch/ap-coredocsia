@@ -1013,17 +1013,17 @@ function UploadPage() {
     if (isUploading) return;
     const failed = items.filter((i) => i.status === "error");
     if (failed.length === 0) return;
+    const next = items.map((i) =>
+      i.status === "error"
+        ? { ...i, status: "queued" as const, error: undefined, progress: 0 }
+        : i,
+    );
     flushSync(() => {
-      setItems((p) =>
-        p.map((i) =>
-          i.status === "error"
-            ? { ...i, status: "queued", error: undefined, progress: 0 }
-            : i,
-        ),
-      );
+      setItems(next);
     });
-    await handleUploadAll();
+    await handleUploadAll(next);
   }
+
 
 
 
