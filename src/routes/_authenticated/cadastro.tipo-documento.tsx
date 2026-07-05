@@ -247,6 +247,7 @@ function TipoDocumentoPage() {
     onSuccess: () => {
       toast.success("Tipo duplicado com sucesso");
       queryClient.invalidateQueries({ queryKey: ["doc-types"] });
+      setCloneSource(null);
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro ao duplicar tipo."),
   });
