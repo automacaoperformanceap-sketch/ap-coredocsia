@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from "react";
+import { flushSync } from "react-dom";
+
 import { PdfPreview } from "@/components/pdf-preview";
 import { useDropzone } from "react-dropzone";
 import { createFileRoute } from "@tanstack/react-router";
@@ -871,13 +873,15 @@ function UploadPage() {
 
 
 
-  async function handleUploadAll() {
+  async function handleUploadAll(itemsOverride?: QueueItem[]) {
     if (!orgId || !userId) return toast.error("Organização não definida");
     if (companyId === "none") return toast.error("Selecione a empresa");
     if (docTypeId === "none") return toast.error("Selecione o tipo de documento");
 
-    const queued = items.filter((i) => i.status === "queued");
+    const source = itemsOverride ?? items;
+    const queued = source.filter((i) => i.status === "queued");
     if (queued.length === 0) return;
+
 
     // Rola até o topo para acompanhar a barra de progresso.
     // Sobe por todos os ancestrais scrolláveis (window + <main> do app-shell).
@@ -1004,6 +1008,24 @@ function UploadPage() {
   function clearDone() {
     setItems((p) => p.filter((i) => i.status !== "done"));
   }
+
+  async function retryFailed() {
+    if (isUploading) return;
+    const failed = items.filter((i) => i.status === "error");
+    if (failed.length === 0) return;
+    const next = items.map((i) =>
+      i.status === "error"
+        ? { ...i, status: "queued" as const, error: undefined, progress: 0 }
+        : i,
+    );
+    flushSync(() => {
+      setItems(next);
+    });
+    await handleUploadAll(next);
+  }
+
+
+
 
   function clearAll() {
     if (isUploading) return;
@@ -1333,6 +1355,20 @@ function UploadPage() {
                     Limpar finalizados
                   </Button>
                 )}
+                {errorCount > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={retryFailed}
+                    disabled={isUploading}
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    title="Reenvia apenas os arquivos que falharam"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Reenviar {errorCount} com erro
+                  </Button>
+                )}
+
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1416,7 +1452,7 @@ function UploadPage() {
                 )}
                 <Button
                   size="sm"
-                  onClick={handleUploadAll}
+                  onClick={() => handleUploadAll()}
                   disabled={isUploading || !items.some((i) => i.status === "queued")}
                   className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
                 >
@@ -1593,7 +1629,7 @@ function UploadPage() {
             <div className="sticky bottom-4 z-10 mt-4 flex justify-end">
               <Button
                 size="sm"
-                onClick={handleUploadAll}
+                onClick={() => handleUploadAll()}
                 disabled={isUploading || !items.some((i) => i.status === "queued")}
                 className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
               >
