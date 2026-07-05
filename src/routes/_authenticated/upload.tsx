@@ -984,7 +984,20 @@ function UploadPage() {
     setBatchProgress(null);
     queryClient.invalidateQueries({ queryKey: ["documents"] });
     queryClient.invalidateQueries({ queryKey: ["ai-usage-logs"] });
-    toast.success("Upload finalizado");
+
+    const successCount = queued.filter(
+      (q) => items.find((i) => i.id === q.id)?.status === "done",
+    ).length;
+    const failedCount = queued.length - successCount;
+    if (failedCount === 0) {
+      toast.success(`Upload finalizado: ${successCount} enviado(s)`);
+    } else if (successCount === 0) {
+      toast.error(`Upload falhou: ${failedCount} com erro`);
+    } else {
+      toast.warning(
+        `Upload finalizado: ${successCount} enviado(s), ${failedCount} com erro`,
+      );
+    }
   }
 
   function clearDone() {
