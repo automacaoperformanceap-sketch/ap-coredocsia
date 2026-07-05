@@ -12,8 +12,8 @@ export const Route = createFileRoute("/api/public/files/$id")({
         if (!token) return new Response("Unauthorized", { status: 401 });
 
         // Validate token via a publishable-key client (uses access token as user)
-        const sbUrl = process.env.SUPABASE_URL!;
-        const sbKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
+        const sbUrl = process.env.APP_SUPABASE_URL!;
+        const sbKey = process.env.APP_SUPABASE_PUBLISHABLE_KEY!;
         const authed = createClient(sbUrl, sbKey, {
           global: { headers: { Authorization: `Bearer ${token}` } },
           auth: { persistSession: false, autoRefreshToken: false },
