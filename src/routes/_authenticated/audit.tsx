@@ -146,7 +146,7 @@ function AuditPage() {
   const PAGE_SIZE = 10;
   const queryClient = useQueryClient();
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading, isFetching, refetch } = useQuery({
     queryKey: ["ai-usage-logs", orgId],
     enabled: !!orgId,
     queryFn: async (): Promise<AiLogRow[]> => {
