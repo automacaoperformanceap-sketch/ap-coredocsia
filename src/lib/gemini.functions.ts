@@ -42,8 +42,8 @@ export const extractFieldsWithGemini = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY não configurado no servidor");
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("LOVABLE_API_KEY não configurado no servidor");
 
     const file = data.get("file");
     const fieldsJson = String(data.get("fields") ?? "[]");
