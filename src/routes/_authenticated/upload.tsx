@@ -911,6 +911,8 @@ function UploadPage() {
 
     setIsUploading(true);
     setUploadStartedAt(new Date());
+    let successCount = 0;
+    let failedCount = 0;
 
 
 
@@ -927,6 +929,7 @@ function UploadPage() {
       const err = validateFile(item.file);
       if (err) {
         updateItem(item.id, { status: "error", error: err });
+        failedCount++;
         continue;
       }
       updateItem(item.id, { status: "uploading", progress: 0 });
@@ -945,6 +948,7 @@ function UploadPage() {
         });
 
         updateItem(item.id, { status: "done", progress: 100 });
+        successCount++;
 
         // Soma de caracteres corrigidos manualmente vs. extração da IA
         const logId = item.aiUsage?.log_id;
@@ -977,6 +981,7 @@ function UploadPage() {
         }
       } catch (e: any) {
         updateItem(item.id, { status: "error", error: e.message ?? "Erro" });
+        failedCount++;
       }
     }
 
@@ -984,7 +989,16 @@ function UploadPage() {
     setBatchProgress(null);
     queryClient.invalidateQueries({ queryKey: ["documents"] });
     queryClient.invalidateQueries({ queryKey: ["ai-usage-logs"] });
-    toast.success("Upload finalizado");
+
+    if (failedCount === 0) {
+      toast.success(`Upload finalizado: ${successCount} enviado(s)`);
+    } else if (successCount === 0) {
+      toast.error(`Upload falhou: ${failedCount} com erro`);
+    } else {
+      toast.warning(
+        `Upload finalizado: ${successCount} enviado(s), ${failedCount} com erro`,
+      );
+    }
   }
 
   function clearDone() {
