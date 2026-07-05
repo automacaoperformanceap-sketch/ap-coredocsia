@@ -981,6 +981,7 @@ function UploadPage() {
         }
       } catch (e: any) {
         updateItem(item.id, { status: "error", error: e.message ?? "Erro" });
+        failedCount++;
       }
     }
 
@@ -989,10 +990,6 @@ function UploadPage() {
     queryClient.invalidateQueries({ queryKey: ["documents"] });
     queryClient.invalidateQueries({ queryKey: ["ai-usage-logs"] });
 
-    const successCount = queued.filter(
-      (q) => items.find((i) => i.id === q.id)?.status === "done",
-    ).length;
-    const failedCount = queued.length - successCount;
     if (failedCount === 0) {
       toast.success(`Upload finalizado: ${successCount} enviado(s)`);
     } else if (successCount === 0) {
