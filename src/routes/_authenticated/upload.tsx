@@ -911,6 +911,8 @@ function UploadPage() {
 
     setIsUploading(true);
     setUploadStartedAt(new Date());
+    let successCount = 0;
+    let failedCount = 0;
 
 
 
