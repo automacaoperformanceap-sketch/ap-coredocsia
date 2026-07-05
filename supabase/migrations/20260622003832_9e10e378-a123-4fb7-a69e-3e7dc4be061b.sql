@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS ai_cost_per_file NUMERIC(10,4) NOT NULL DEFAULT 0.15;

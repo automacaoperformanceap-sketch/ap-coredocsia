@@ -1,0 +1,1 @@
+ALTER TABLE public.document_type_fields ADD COLUMN IF NOT EXISTS expected_length integer NULL CHECK (expected_length IS NULL OR (expected_length > 0 AND expected_length <= 4000));

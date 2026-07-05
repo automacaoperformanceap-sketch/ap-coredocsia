@@ -1,0 +1,1 @@
+ALTER TABLE public.document_types ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
