@@ -1005,6 +1005,23 @@ function UploadPage() {
     setItems((p) => p.filter((i) => i.status !== "done"));
   }
 
+  async function retryFailed() {
+    if (isUploading) return;
+    const failed = items.filter((i) => i.status === "error");
+    if (failed.length === 0) return;
+    setItems((p) =>
+      p.map((i) =>
+        i.status === "error"
+          ? { ...i, status: "queued", error: undefined, progress: 0 }
+          : i,
+      ),
+    );
+    // Aguarda o estado propagar antes de reprocessar.
+    await new Promise((r) => setTimeout(r, 0));
+    await handleUploadAll();
+  }
+
+
   function clearAll() {
     if (isUploading) return;
     if (!confirm("Remover todos os arquivos da fila?")) return;
