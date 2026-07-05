@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from "react";
+import { flushSync } from "react-dom";
+
 import { PdfPreview } from "@/components/pdf-preview";
 import { useDropzone } from "react-dropzone";
 import { createFileRoute } from "@tanstack/react-router";
