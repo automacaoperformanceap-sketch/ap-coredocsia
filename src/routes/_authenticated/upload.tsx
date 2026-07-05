@@ -1330,10 +1330,36 @@ function UploadPage() {
                   <X className="h-4 w-4 mr-1" />
                   Limpar fila
                 </Button>
+                <ToggleGroup
+                  type="single"
+                  size="sm"
+                  value={aiProvider}
+                  onValueChange={(v) => {
+                    if (v === "gemini" || v === "claude") setAiProvider(v);
+                  }}
+                  disabled={isExtracting !== null}
+                  className="rounded-md border bg-background p-0.5"
+                  aria-label="Provedor de IA"
+                >
+                  <ToggleGroupItem
+                    value="gemini"
+                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-slate-800 data-[state=on]:via-blue-800 data-[state=on]:to-sky-700 data-[state=on]:text-white"
+                    title="Usar Google Gemini"
+                  >
+                    Gemini
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="claude"
+                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-700 data-[state=on]:via-amber-700 data-[state=on]:to-rose-700 data-[state=on]:text-white"
+                    title="Usar Anthropic Claude"
+                  >
+                    Claude
+                  </ToggleGroupItem>
+                </ToggleGroup>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleAutoFillAll("gemini")}
+                  onClick={() => handleAutoFillAll(aiProvider)}
                   disabled={
                     isExtracting !== null ||
                     isUploading ||
@@ -1341,38 +1367,23 @@ function UploadPage() {
                     fields.length === 0 ||
                     !items.some((i) => i.status === "queued")
                   }
-                  title="Lê a 1ª página de cada arquivo e preenche os campos via Gemini IA"
-                  className="group relative overflow-hidden bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 text-white border-0 shadow-md shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50 hover:-translate-y-0.5 transition-all duration-300"
+                  title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : "Gemini"}`}
+                  className={cn(
+                    "group relative overflow-hidden text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
+                    aiProvider === "claude"
+                      ? "bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50"
+                      : "bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50",
+                  )}
                 >
                   <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                  {isExtracting === "gemini" ? (
+                  {isExtracting !== null ? (
                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                   ) : (
                     <Sparkles className="h-4 w-4 mr-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
                   )}
-                  <span className="relative">Preencher com Gemini</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleAutoFillAll("claude")}
-                  disabled={
-                    isExtracting !== null ||
-                    isUploading ||
-                    docTypeId === "none" ||
-                    fields.length === 0 ||
-                    !items.some((i) => i.status === "queued")
-                  }
-                  title="Lê a 1ª página de cada arquivo e preenche os campos via Claude Haiku 4.5"
-                  className="group relative overflow-hidden bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 text-white border-0 shadow-md shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50 hover:-translate-y-0.5 transition-all duration-300"
-                >
-                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                  {isExtracting === "claude" ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
-                  )}
-                  <span className="relative">Preencher com Claude</span>
+                  <span className="relative">
+                    Preencher com {aiProvider === "claude" ? "Claude" : "Gemini"}
+                  </span>
                 </Button>
                 {isExtracting !== null && (
                   <Button
