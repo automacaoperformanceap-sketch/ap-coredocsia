@@ -961,6 +961,60 @@ function FieldsDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!cloneSource} onOpenChange={(o) => { if (!o) setCloneSource(null); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Duplicar tipo de documento</DialogTitle>
+          <DialogDescription>
+            {cloneSource ? `Copiando "${cloneSource.name}" com todos os campos de indexação.` : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!cloneSource) return;
+            duplicate.mutate({ source: cloneSource, name: cloneName, slug: cloneSlug });
+          }}
+          className="space-y-4"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="clone-name">Nome *</Label>
+            <Input
+              id="clone-name"
+              value={cloneName}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCloneName(v);
+                if (!cloneSlugTouched) setCloneSlug(slugify(v));
+              }}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="clone-slug">Slug</Label>
+            <Input
+              id="clone-slug"
+              value={cloneSlug}
+              onChange={(e) => {
+                setCloneSlugTouched(true);
+                setCloneSlug(e.target.value);
+              }}
+              placeholder="gerado a partir do nome"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCloneSource(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={duplicate.isPending || !cloneName.trim()}>
+              {duplicate.isPending ? "Duplicando..." : "Duplicar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
