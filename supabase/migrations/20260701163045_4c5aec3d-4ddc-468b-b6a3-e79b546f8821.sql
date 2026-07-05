@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.dt_kerolain_41d6a03e; UPDATE public.document_types SET storage_table = NULL WHERE storage_table = 'dt_kerolain_41d6a03e';

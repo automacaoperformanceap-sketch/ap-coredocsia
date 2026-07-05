@@ -1,0 +1,1 @@
+CREATE POLICY "org admins can delete ai usage" ON public.ai_usage_logs FOR DELETE TO authenticated USING (public.has_role(auth.uid(), org_id, 'org_admin'));

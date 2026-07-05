@@ -1,0 +1,1 @@
+ALTER TABLE public.document_type_fields ADD COLUMN IF NOT EXISTS location_hint text;

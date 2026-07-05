@@ -1,0 +1,1 @@
+ALTER TABLE public.document_types ADD COLUMN IF NOT EXISTS store_files boolean NOT NULL DEFAULT true;

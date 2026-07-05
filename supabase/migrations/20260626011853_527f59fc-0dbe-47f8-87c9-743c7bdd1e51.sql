@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_usage_logs ADD COLUMN IF NOT EXISTS extracted_chars integer NOT NULL DEFAULT 0;

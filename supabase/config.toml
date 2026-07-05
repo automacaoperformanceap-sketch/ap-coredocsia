@@ -1,0 +1,7 @@
+project_id = "trgsifdxzwulsdtyyphs"
+
+[functions.migrate-sql]
+verify_jwt = false
+
+[functions.painel-migracao]
+verify_jwt = false
