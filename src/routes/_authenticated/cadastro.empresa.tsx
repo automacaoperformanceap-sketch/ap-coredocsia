@@ -107,17 +107,17 @@ function EmpresaPage() {
 
   const upsert = useMutation({
     mutationFn: async (payload: CompanyForm) => {
-      let activeOrgId = effectiveOrgId;
       const { data: userRes, error: userError } = await supabase.auth.getUser();
 
       if (userError || !userRes.user) {
         throw new Error("Sessão expirada. Entre novamente para continuar.");
       }
 
-      if (!activeOrgId) {
-        const ensured = await ensureCurrentOrganization();
-        activeOrgId = ensured.orgId;
-      }
+      // Always ensure the user has a valid org they're actually a member of.
+      // This avoids RLS violations when profile.current_org_id points to an
+      // org without a matching organization_members row for the current user.
+      const ensured = await ensureCurrentOrganization();
+      const activeOrgId = ensured.orgId;
 
       if (!activeOrgId) throw new Error("Organização não selecionada");
       const row = {
