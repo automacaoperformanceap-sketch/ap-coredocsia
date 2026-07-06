@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FolderOpen, Search, Pencil, X, Trash2, Loader2, Plus, Info, Download, Upload, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { FolderOpen, Search, Pencil, X, Trash2, Loader2, Plus, Info, Download, Upload, ArrowUp, ArrowDown, ArrowUpDown, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
@@ -709,6 +709,22 @@ function DocumentsPage() {
                   </Button>
                 );
               })()}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await queryClient.invalidateQueries({ queryKey: ["documents"] });
+                  await queryClient.invalidateQueries({ queryKey: ["org-documents-stats"] });
+                  await queryClient.invalidateQueries({ queryKey: ["ai-usage-by-docs"] });
+                  await queryClient.invalidateQueries({ queryKey: ["ai-duration-by-docs"] });
+                  toast.success("Consulta atualizada");
+                }}
+                disabled={isLoading}
+                className="gap-2"
+                title="Atualizar consulta"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
