@@ -712,6 +712,22 @@ function DocumentsPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={async () => {
+                  await queryClient.invalidateQueries({ queryKey: ["documents"] });
+                  await queryClient.invalidateQueries({ queryKey: ["org-documents-stats"] });
+                  await queryClient.invalidateQueries({ queryKey: ["ai-usage-by-docs"] });
+                  await queryClient.invalidateQueries({ queryKey: ["ai-duration-by-docs"] });
+                  toast.success("Consulta atualizada");
+                }}
+                disabled={isLoading}
+                className="gap-2"
+                title="Atualizar consulta"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} /> Atualizar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleExportXlsx}
                 disabled={!filtersSelected || filteredDocs.length === 0}
                 className="gap-2"
