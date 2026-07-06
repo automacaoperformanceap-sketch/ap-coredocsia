@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FolderOpen, Search, Pencil, X, Trash2, Loader2, Plus, Info, Download, Upload, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { FolderOpen, Search, Pencil, X, Trash2, Loader2, Plus, Info, Download, Upload, ArrowUp, ArrowDown, ArrowUpDown, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useQuery } from "@tanstack/react-query";
