@@ -477,6 +477,18 @@ function UsuarioPage() {
                         size="icon"
                         variant="ghost"
                         onClick={() => {
+                          setNewPwd("");
+                          setResetTarget({ userId: g.userId, name: g.name });
+                        }}
+                        aria-label="Redefinir senha"
+                        title="Redefinir senha"
+                      >
+                        <KeyRound className="h-4 w-4 text-blue-700" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
                           if (
                             confirm(
                               `Excluir o usuário "${g.name}"? Esta ação remove o acesso a todos os tipos de documento.`,
