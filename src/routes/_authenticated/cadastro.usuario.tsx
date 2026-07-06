@@ -275,6 +275,17 @@ function UsuarioPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const resetPassword = useMutation({
+    mutationFn: async (v: { userId: string; password: string }) =>
+      resetPwdFn({ data: v }),
+    onSuccess: () => {
+      toast.success("Senha redefinida");
+      setResetTarget(null);
+      setNewPwd("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // When editing and docTypes (re)loads for the selected company,
   // make sure all already-granted ids are kept selected even if
   // the docType list arrives after we open the dialog.
