@@ -346,7 +346,7 @@ function AuditPage() {
             <span>Custo total</span>
           </div>
           <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">
-            R$ {totals.cost.toFixed(2).replace(".", ",")}
+            R$ {totals.cost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
             Média R$ {(totals.files > 0 ? totals.cost / totals.files : 0).toFixed(2).replace(".", ",")} por arquivo
