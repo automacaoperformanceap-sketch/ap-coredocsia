@@ -647,6 +647,64 @@ function UsuarioPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!resetTarget}
+        onOpenChange={(o) => {
+          if (!o) {
+            setResetTarget(null);
+            setNewPwd("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Redefinir senha</DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{resetTarget?.name}</strong>. O usuário poderá alterá-la depois no primeiro acesso.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!resetTarget) return;
+              if (newPwd.length < 6) {
+                toast.error("A senha deve ter pelo menos 6 caracteres");
+                return;
+              }
+              resetPassword.mutate({ userId: resetTarget.userId, password: newPwd });
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="newPwd">Nova senha *</Label>
+              <Input
+                id="newPwd"
+                type="password"
+                autoComplete="new-password"
+                value={newPwd}
+                onChange={(e) => setNewPwd(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setResetTarget(null);
+                  setNewPwd("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={resetPassword.isPending}>
+                {resetPassword.isPending ? "Salvando…" : "Redefinir"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
