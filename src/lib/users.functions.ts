@@ -287,6 +287,38 @@ export const setUserSuspended = createServerFn({ method: "POST" })
     return { ok: true, suspended: data.suspend };
   });
 
+const resetPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: z.string().min(6).max(72),
+});
+
+/** Admin sets a new password for another user in the same org. */
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => resetPasswordSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const orgId = await resolveOrgId(supabase, userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Ensure target user belongs to the same org.
+    const { data: member } = await supabaseAdmin
+      .from("organization_members")
+      .select("user_id")
+      .eq("org_id", orgId)
+      .eq("user_id", data.userId)
+      .maybeSingle();
+    if (!member) throw new Error("Usuário não pertence à organização atual");
+
+    const res = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+      password: data.password,
+      user_metadata: { must_change_password: true },
+    } as any);
+    if (res.error) throw new Error(res.error.message);
+    return { ok: true };
+  });
+
 /** Returns the set of suspended user ids among the given ids. */
 export const listSuspendedUserIds = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
