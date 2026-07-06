@@ -41,6 +41,7 @@ import {
   deleteUserAccount,
   inviteUserAccess,
   listOrgUserAccess,
+  resetUserPassword,
   setUserSuspended,
   updateUserAccess,
 } from "@/lib/users.functions";
