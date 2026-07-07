@@ -272,12 +272,20 @@ function AuditPage() {
     return t;
   }
 
-  // Cards e somatório por empresa refletem SEMPRE todos os registros da organização.
-  const totals = useMemo(() => computeTotals(logs), [logs]);
+  // Cards e somatório por empresa refletem os filtros de empresa e tipo (ignoram busca textual).
+  const filteredByFacets = useMemo(() => {
+    return logs.filter((l) => {
+      if (companyFilter !== "__all__" && (l.company_name ?? "") !== companyFilter) return false;
+      if (docTypeFilter !== "__all__" && (l.document_type_name ?? "") !== docTypeFilter) return false;
+      return true;
+    });
+  }, [logs, companyFilter, docTypeFilter]);
+
+  const totals = useMemo(() => computeTotals(filteredByFacets), [filteredByFacets]);
 
   const byCompany = useMemo(() => {
     const map = new Map<string, { files: number; tokens: number; cost: number }>();
-    for (const l of logs) {
+    for (const l of filteredByFacets) {
       const k = l.company_name ?? "—";
       const cur = map.get(k) ?? { files: 0, tokens: 0, cost: 0 };
       cur.files += 1;
@@ -286,7 +294,7 @@ function AuditPage() {
       map.set(k, cur);
     }
     return [...map.entries()].sort((a, b) => b[1].cost - a[1].cost);
-  }, [logs]);
+  }, [filteredByFacets]);
 
   // Grid "Detalhes por arquivo" só é preenchido quando empresa E tipo estão selecionados.
   const detailsReady = companyFilter !== "__all__" && docTypeFilter !== "__all__";
