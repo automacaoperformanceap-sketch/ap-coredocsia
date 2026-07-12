@@ -704,6 +704,8 @@ function UploadPage() {
         form.append("fields", fieldsJson);
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
+        if (provider === "grok") form.append("model", grokModel);
+
         const res = (await runExtractWithFreshAuth(extractFn, form)) as {
           values: Record<string, string>;
           usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; log_id?: string | null };
