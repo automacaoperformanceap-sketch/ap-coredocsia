@@ -653,7 +653,7 @@ function UploadPage() {
     }
   }
 
-  async function handleAutoFillAll(provider: "gemini" | "claude") {
+  async function handleAutoFillAll(provider: "gemini" | "claude" | "grok") {
     if (docTypeId === "none") return toast.error("Selecione o tipo de documento");
     if (fields.length === 0) return toast.error("Este tipo não tem campos de indexação");
 
@@ -674,8 +674,11 @@ function UploadPage() {
     }));
 
     const fieldsJson = JSON.stringify(fieldDefs);
-    const extractFn = provider === "claude" ? extractClaudeFn : extractGeminiFn;
-    const providerLabel = provider === "claude" ? "Claude" : "Gemini";
+    const extractFn =
+      provider === "claude" ? extractClaudeFn : provider === "grok" ? extractGrokFn : extractGeminiFn;
+    const providerLabel =
+      provider === "claude" ? "Claude" : provider === "grok" ? "Grok" : "Gemini";
+
 
     let ok = 0;
     let fail = 0;
