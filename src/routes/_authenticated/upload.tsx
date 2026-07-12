@@ -1449,7 +1449,7 @@ function UploadPage() {
                   }
                   title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : "Gemini"}`}
                   className={cn(
-                    "group relative overflow-hidden text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
+                    "group relative overflow-hidden text-white hover:text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
                     aiProvider === "claude"
                       ? "bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50"
                       : aiProvider === "grok"
