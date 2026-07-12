@@ -50,6 +50,6 @@ export async function pdfFirstPageToJpeg(
     const newName = file.name.replace(/\.pdf$/i, "") + ".jpg";
     return new File([blob], newName, { type: "image/jpeg", lastModified: Date.now() });
   } finally {
-    await pdf.destroy?.();
+    await (pdf as unknown as { destroy?: () => Promise<void> }).destroy?.();
   }
 }
