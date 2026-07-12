@@ -172,6 +172,13 @@ const CLAUDE_MODELS = [
   { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — rápido (recomendado)" },
 ];
 
+const GROK_MODELS = [
+  { value: "grok-build-0.1", label: "Grok Build 0.1 — padrão" },
+  { value: "grok-2-vision-1212", label: "Grok 2 Vision — multimodal" },
+  { value: "grok-2-1212", label: "Grok 2 — texto" },
+  { value: "grok-beta", label: "Grok Beta" },
+];
+
 function AiModelsSettings({ organizationId }: { organizationId: string | undefined }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
