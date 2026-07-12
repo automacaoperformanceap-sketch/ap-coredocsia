@@ -176,7 +176,7 @@ const GROK_MODELS = [
   { value: "grok-build-0.1", label: "Grok Build 0.1 — padrão" },
   { value: "grok-2-vision-1212", label: "Grok 2 Vision — multimodal" },
   { value: "grok-2-1212", label: "Grok 2 — texto" },
-  { value: "grok-beta", label: "Grok Beta" },
+  { value: "grok-4.20-0309-reasoning", label: "Grok 4.20 0309 — raciocínio" },
 ];
 
 function AiModelsSettings({ organizationId }: { organizationId: string | undefined }) {
