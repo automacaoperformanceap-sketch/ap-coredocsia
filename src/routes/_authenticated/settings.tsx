@@ -175,7 +175,7 @@ const CLAUDE_MODELS = [
 const GROK_MODELS = [
   { value: "grok-build-0.1", label: "Grok Build 0.1 — padrão" },
   { value: "grok-4.3", label: "Grok 4.3" },
-  { value: "grok-2-1212", label: "Grok 2 — texto" },
+  { value: "grok-4.20-multi-agent-0309", label: "Grok 4.20 Multi-Agent 0309" },
   { value: "grok-4.20-0309-reasoning", label: "Grok 4.20 0309 — raciocínio" },
 ];
 
