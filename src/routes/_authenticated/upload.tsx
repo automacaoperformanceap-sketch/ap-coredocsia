@@ -701,7 +701,11 @@ function UploadPage() {
       });
       try {
         const form = new FormData();
-        form.append("file", await compressImageIfNeeded(item.file));
+        const fileForAi =
+          provider === "grok" && item.file.type === "application/pdf"
+            ? await pdfFirstPageToJpeg(item.file)
+            : await compressImageIfNeeded(item.file);
+        form.append("file", fileForAi);
         form.append("fields", fieldsJson);
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
