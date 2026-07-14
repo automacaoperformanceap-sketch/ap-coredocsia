@@ -479,6 +479,12 @@ function UploadPage() {
     if (typeof window === "undefined") return "grok-build-0.1";
     return window.localStorage.getItem("upload:grokModel") || "grok-build-0.1";
   });
+  const [maxPages, setMaxPages] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const raw = window.localStorage.getItem("upload:maxPages");
+    const n = raw ? parseInt(raw, 10) : 1;
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
+  });
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:aiProvider", aiProvider);
@@ -489,6 +495,11 @@ function UploadPage() {
       window.localStorage.setItem("upload:grokModel", grokModel);
     }
   }, [grokModel]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:maxPages", String(maxPages));
+    }
+  }, [maxPages]);
   const [batchProgress, setBatchProgress] = useState<{
     action: "extract" | "upload";
     current: number;
