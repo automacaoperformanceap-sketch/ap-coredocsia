@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { extractFieldsWithGemini } from "@/lib/gemini.functions";
 import { compressImageIfNeeded } from "@/lib/image-compress";
-import { pdfFirstPageToJpeg } from "@/lib/pdf-to-image";
+import { pdfPagesToJpeg } from "@/lib/pdf-to-image";
 import { extractFieldsWithClaude } from "@/lib/claude.functions";
 import { extractFieldsWithGrok } from "@/lib/grok.functions";
 
