@@ -712,12 +712,14 @@ function UploadPage() {
       });
       try {
         const form = new FormData();
-        const fileForAi =
-          provider === "grok" && item.file.type === "application/pdf"
-            ? await pdfFirstPageToJpeg(item.file)
-            : await compressImageIfNeeded(item.file);
+        const isPdf = item.file.type === "application/pdf";
+        const shouldRasterize = isPdf && (provider === "grok" || maxPages > 1);
+        const fileForAi = shouldRasterize
+          ? await pdfPagesToJpeg(item.file, { maxPages })
+          : await compressImageIfNeeded(item.file);
         form.append("file", fileForAi);
         form.append("fields", fieldsJson);
+        form.append("maxPages", String(maxPages));
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
