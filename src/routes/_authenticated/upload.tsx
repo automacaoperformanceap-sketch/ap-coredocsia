@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { extractFieldsWithGemini } from "@/lib/gemini.functions";
 import { compressImageIfNeeded } from "@/lib/image-compress";
-import { pdfFirstPageToJpeg } from "@/lib/pdf-to-image";
+import { pdfPagesToJpeg } from "@/lib/pdf-to-image";
 import { extractFieldsWithClaude } from "@/lib/claude.functions";
 import { extractFieldsWithGrok } from "@/lib/grok.functions";
 
@@ -479,6 +479,12 @@ function UploadPage() {
     if (typeof window === "undefined") return "grok-build-0.1";
     return window.localStorage.getItem("upload:grokModel") || "grok-build-0.1";
   });
+  const [maxPages, setMaxPages] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    const raw = window.localStorage.getItem("upload:maxPages");
+    const n = raw ? parseInt(raw, 10) : 1;
+    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
+  });
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:aiProvider", aiProvider);
@@ -489,6 +495,11 @@ function UploadPage() {
       window.localStorage.setItem("upload:grokModel", grokModel);
     }
   }, [grokModel]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:maxPages", String(maxPages));
+    }
+  }, [maxPages]);
   const [batchProgress, setBatchProgress] = useState<{
     action: "extract" | "upload";
     current: number;
@@ -701,12 +712,14 @@ function UploadPage() {
       });
       try {
         const form = new FormData();
-        const fileForAi =
-          provider === "grok" && item.file.type === "application/pdf"
-            ? await pdfFirstPageToJpeg(item.file)
-            : await compressImageIfNeeded(item.file);
+        const isPdf = item.file.type === "application/pdf";
+        const shouldRasterize = isPdf && (provider === "grok" || maxPages > 1);
+        const fileForAi = shouldRasterize
+          ? await pdfPagesToJpeg(item.file, { maxPages })
+          : await compressImageIfNeeded(item.file);
         form.append("file", fileForAi);
         form.append("fields", fieldsJson);
+        form.append("maxPages", String(maxPages));
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
@@ -830,12 +843,14 @@ function UploadPage() {
 
     try {
       const form = new FormData();
-      const fileForAi =
-        provider === "grok" && item.file.type === "application/pdf"
-          ? await pdfFirstPageToJpeg(item.file)
-          : await compressImageIfNeeded(item.file);
+      const isPdf = item.file.type === "application/pdf";
+      const shouldRasterize = isPdf && (provider === "grok" || maxPages > 1);
+      const fileForAi = shouldRasterize
+        ? await pdfPagesToJpeg(item.file, { maxPages })
+        : await compressImageIfNeeded(item.file);
       form.append("file", fileForAi);
       form.append("fields", fieldsJson);
+      form.append("maxPages", String(maxPages));
       if (companyId !== "none") form.append("companyId", companyId);
       if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
       if (provider === "grok") form.append("model", grokModel);
@@ -1445,6 +1460,33 @@ function UploadPage() {
                     Grok
                   </ToggleGroupItem>
                 </ToggleGroup>
+                <div
+                  className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-8"
+                  title="Número de páginas iniciais que a IA irá ler para extrair os dados"
+                >
+                  <Label htmlFor="upload-max-pages" className="text-xs text-muted-foreground m-0">
+                    Páginas
+                  </Label>
+                  <Select
+                    value={String(maxPages)}
+                    onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
+                    disabled={isExtracting !== null}
+                  >
+                    <SelectTrigger
+                      id="upload-max-pages"
+                      className="h-7 w-[68px] text-xs border-0 shadow-none px-1.5 focus:ring-0"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 7, 10].map((n) => (
+                        <SelectItem key={n} value={String(n)} className="text-xs">
+                          {n === 1 ? "1 (padrão)" : `${n} páginas`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
                   size="sm"
                   variant="outline"
