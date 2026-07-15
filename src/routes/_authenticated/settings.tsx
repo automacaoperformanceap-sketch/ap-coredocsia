@@ -179,6 +179,12 @@ const GROK_MODELS = [
   { value: "grok-4.20-0309-reasoning", label: "Grok 4.20 0309 — raciocínio" },
 ];
 
+const OPENAI_MODELS = [
+  { value: "gpt-5.4-mini", label: "GPT-5.4 Mini — padrão" },
+  { value: "gpt-5.4", label: "GPT-5.4" },
+  { value: "gpt-5.4-nano", label: "GPT-5.4 Nano — mais rápido" },
+];
+
 function AiModelsSettings({ organizationId }: { organizationId: string | undefined }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
@@ -201,6 +207,10 @@ function AiModelsSettings({ organizationId }: { organizationId: string | undefin
     if (typeof window === "undefined") return "grok-build-0.1";
     return window.localStorage.getItem("upload:grokModel") || "grok-build-0.1";
   });
+  const [openaiModel, setOpenaiModel] = useState<string>(() => {
+    if (typeof window === "undefined") return "gpt-5.4-mini";
+    return window.localStorage.getItem("upload:openaiModel") || "gpt-5.4-mini";
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -220,6 +230,7 @@ function AiModelsSettings({ organizationId }: { organizationId: string | undefin
       if (error) throw error;
       if (typeof window !== "undefined") {
         window.localStorage.setItem("upload:grokModel", grokModel);
+        window.localStorage.setItem("upload:openaiModel", openaiModel);
       }
       toast.success("Modelos de IA atualizados!");
       queryClient.invalidateQueries({ queryKey: ["org-ai-models", organizationId] });
@@ -243,7 +254,7 @@ function AiModelsSettings({ organizationId }: { organizationId: string | undefin
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-2">
                 <Label>Motor Gemini</Label>
                 <Select value={geminiModel} onValueChange={setGeminiModel}>
@@ -279,6 +290,18 @@ function AiModelsSettings({ organizationId }: { organizationId: string | undefin
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">Modelo atual: <code>{grokModel}</code></p>
+              </div>
+              <div className="space-y-2">
+                <Label>Motor OpenAI</Label>
+                <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {OPENAI_MODELS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Modelo atual: <code>{openaiModel}</code></p>
               </div>
             </div>
             <Button onClick={handleSave} disabled={isSaving}>

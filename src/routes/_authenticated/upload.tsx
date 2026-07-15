@@ -31,6 +31,7 @@ import { compressImageIfNeeded } from "@/lib/image-compress";
 import { pdfPagesToJpeg } from "@/lib/pdf-to-image";
 import { extractFieldsWithClaude } from "@/lib/claude.functions";
 import { extractFieldsWithGrok } from "@/lib/grok.functions";
+import { extractFieldsWithOpenAI } from "@/lib/openai.functions";
 
 import { lookupByKey } from "@/lib/lookup";
 import { cn } from "@/lib/utils";
@@ -134,7 +135,7 @@ interface QueueItem {
   aiUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; log_id?: string | null } | null;
   aiOriginalValues?: Record<string, string>;
   aiStatus?: "success" | "failed" | "incomplete";
-  aiProvider?: "gemini" | "claude" | "grok";
+  aiProvider?: "gemini" | "claude" | "grok" | "openai";
   aiMessage?: string;
   expanded: boolean;
 }
@@ -469,15 +470,19 @@ function UploadPage() {
   const [companyId, setCompanyId] = useState<string>("none");
   const [docTypeId, setDocTypeId] = useState<string>("none");
   const [isUploading, setIsUploading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState<null | "gemini" | "claude" | "grok">(null);
-  const [aiProvider, setAiProvider] = useState<"gemini" | "claude" | "grok">(() => {
+  const [isExtracting, setIsExtracting] = useState<null | "gemini" | "claude" | "grok" | "openai">(null);
+  const [aiProvider, setAiProvider] = useState<"gemini" | "claude" | "grok" | "openai">(() => {
     if (typeof window === "undefined") return "gemini";
     const saved = window.localStorage.getItem("upload:aiProvider");
-    return saved === "claude" || saved === "grok" ? saved : "gemini";
+    return saved === "claude" || saved === "grok" || saved === "openai" ? saved : "gemini";
   });
   const [grokModel, setGrokModel] = useState<string>(() => {
     if (typeof window === "undefined") return "grok-build-0.1";
     return window.localStorage.getItem("upload:grokModel") || "grok-build-0.1";
+  });
+  const [openaiModel, setOpenaiModel] = useState<string>(() => {
+    if (typeof window === "undefined") return "gpt-5.4-mini";
+    return window.localStorage.getItem("upload:openaiModel") || "gpt-5.4-mini";
   });
   const [maxPages, setMaxPages] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
@@ -497,6 +502,11 @@ function UploadPage() {
   }, [grokModel]);
   useEffect(() => {
     if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:openaiModel", openaiModel);
+    }
+  }, [openaiModel]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:maxPages", String(maxPages));
     }
   }, [maxPages]);
@@ -513,6 +523,7 @@ function UploadPage() {
   const extractGeminiFn = useServerFn(extractFieldsWithGemini);
   const extractClaudeFn = useServerFn(extractFieldsWithClaude);
   const extractGrokFn = useServerFn(extractFieldsWithGrok);
+  const extractOpenAIFn = useServerFn(extractFieldsWithOpenAI);
 
   const cancelExtractRef = useRef(false);
 
@@ -665,7 +676,7 @@ function UploadPage() {
     }
   }
 
-  async function handleAutoFillAll(provider: "gemini" | "claude" | "grok") {
+  async function handleAutoFillAll(provider: "gemini" | "claude" | "grok" | "openai") {
     if (docTypeId === "none") return toast.error("Selecione o tipo de documento");
     if (fields.length === 0) return toast.error("Este tipo não tem campos de indexação");
 
@@ -687,9 +698,21 @@ function UploadPage() {
 
     const fieldsJson = JSON.stringify(fieldDefs);
     const extractFn =
-      provider === "claude" ? extractClaudeFn : provider === "grok" ? extractGrokFn : extractGeminiFn;
+      provider === "claude"
+        ? extractClaudeFn
+        : provider === "grok"
+          ? extractGrokFn
+          : provider === "openai"
+            ? extractOpenAIFn
+            : extractGeminiFn;
     const providerLabel =
-      provider === "claude" ? "Claude" : provider === "grok" ? "Grok" : "Gemini";
+      provider === "claude"
+        ? "Claude"
+        : provider === "grok"
+          ? "Grok"
+          : provider === "openai"
+            ? "OpenAI"
+            : "Gemini";
 
 
     let ok = 0;
@@ -713,7 +736,7 @@ function UploadPage() {
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
-        const shouldRasterize = isPdf && (provider === "grok" || maxPages > 1);
+        const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
         const fileForAi = shouldRasterize
           ? await pdfPagesToJpeg(item.file, { maxPages })
           : await compressImageIfNeeded(item.file);
@@ -723,6 +746,7 @@ function UploadPage() {
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
+        if (provider === "openai") form.append("model", openaiModel);
 
         const res = (await runExtractWithFreshAuth(extractFn, form)) as {
           values: Record<string, string>;
@@ -806,7 +830,7 @@ function UploadPage() {
 
 
 
-  async function reprocessItem(itemId: string, providerOverride?: "gemini" | "claude" | "grok") {
+  async function reprocessItem(itemId: string, providerOverride?: "gemini" | "claude" | "grok" | "openai") {
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
     if (docTypeId === "none") return toast.error("Selecione o tipo de documento");
@@ -815,9 +839,21 @@ function UploadPage() {
 
     const provider = providerOverride ?? item.aiProvider ?? "gemini";
     const providerLabel =
-      provider === "claude" ? "Claude" : provider === "grok" ? "Grok" : "Gemini";
+      provider === "claude"
+        ? "Claude"
+        : provider === "grok"
+          ? "Grok"
+          : provider === "openai"
+            ? "OpenAI"
+            : "Gemini";
     const extractFn =
-      provider === "claude" ? extractClaudeFn : provider === "grok" ? extractGrokFn : extractGeminiFn;
+      provider === "claude"
+        ? extractClaudeFn
+        : provider === "grok"
+          ? extractGrokFn
+          : provider === "openai"
+            ? extractOpenAIFn
+            : extractGeminiFn;
 
 
     const fieldDefs = fields.map((f) => ({
@@ -844,7 +880,7 @@ function UploadPage() {
     try {
       const form = new FormData();
       const isPdf = item.file.type === "application/pdf";
-      const shouldRasterize = isPdf && (provider === "grok" || maxPages > 1);
+      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
       const fileForAi = shouldRasterize
         ? await pdfPagesToJpeg(item.file, { maxPages })
         : await compressImageIfNeeded(item.file);
@@ -854,6 +890,7 @@ function UploadPage() {
       if (companyId !== "none") form.append("companyId", companyId);
       if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
       if (provider === "grok") form.append("model", grokModel);
+      if (provider === "openai") form.append("model", openaiModel);
 
       const res = (await runExtractWithFreshAuth(extractFn, form)) as {
         values: Record<string, string>;
@@ -1432,7 +1469,7 @@ function UploadPage() {
                   size="sm"
                   value={aiProvider}
                   onValueChange={(v) => {
-                    if (v === "gemini" || v === "claude" || v === "grok") setAiProvider(v);
+                    if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
                   }}
                   disabled={isExtracting !== null}
                   className="rounded-md border bg-background p-0.5"
@@ -1458,6 +1495,13 @@ function UploadPage() {
                     title={`Usar xAI Grok (modelo: ${grokModel})`}
                   >
                     Grok
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="openai"
+                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-700 data-[state=on]:via-teal-700 data-[state=on]:to-cyan-700 data-[state=on]:text-white"
+                    title={`Usar OpenAI (modelo: ${openaiModel})`}
+                  >
+                    OpenAI
                   </ToggleGroupItem>
                 </ToggleGroup>
                 <div
@@ -1498,14 +1542,16 @@ function UploadPage() {
                     fields.length === 0 ||
                     !items.some((i) => i.status === "queued")
                   }
-                  title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : "Gemini"}`}
+                  title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}`}
                   className={cn(
                     "group relative overflow-hidden text-white hover:text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
                     aiProvider === "claude"
                       ? "bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50"
                       : aiProvider === "grok"
                         ? "bg-gradient-to-r from-black via-neutral-800 to-neutral-600 hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-500 shadow-black/40 hover:shadow-lg hover:shadow-neutral-700/50 text-white"
-                        : "bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50",
+                        : aiProvider === "openai"
+                          ? "bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-700 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-teal-700/30 hover:shadow-lg hover:shadow-cyan-500/50"
+                          : "bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50",
                   )}
                 >
                   <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
@@ -1515,7 +1561,7 @@ function UploadPage() {
                     <Sparkles className="h-4 w-4 mr-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
                   )}
                   <span className="relative">
-                    Preencher com {aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : "Gemini"}
+                    Preencher com {aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}
                   </span>
                 </Button>
 
