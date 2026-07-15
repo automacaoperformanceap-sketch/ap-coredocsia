@@ -200,7 +200,14 @@ function Dashboard() {
   });
 
   // Mescla as recentes no objeto usado pelo restante do componente.
-  const mergedData = data ? { ...data, recent: recent ?? [] } : data;
+  const merged: DashboardData | null | undefined = data
+    ? { ...data, recent: recent ?? [] }
+    : data;
+  // Sombreia o data usado abaixo sem precisar renomear todas as referências.
+  // (a query original só carregava recent junto; agora `recent` é query separada)
+  const _data = data;
+  void _data;
+
 
 
   const firstName = profile?.profile.full_name?.split(" ")[0] ?? "usuário";
