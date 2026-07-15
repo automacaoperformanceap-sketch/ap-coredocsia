@@ -79,14 +79,19 @@ function Dashboard() {
     queryFn: async () => {
       if (!orgId) return null;
 
-      const rpc = await supabase.rpc("get_dashboard_stats" as never, {
-        _org_id: orgId,
-      } as never);
+      const rpc = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: { message: string } | null }>)(
+        "get_dashboard_stats",
+        { _org_id: orgId },
+      );
 
       if (!rpc.error && rpc.data) {
         const s = rpc.data as Omit<DashboardData, "recent">;
         return { ...s, recent: [] } as DashboardData;
       }
+
 
       // ---- Fallback client-side (compatibilidade enquanto a RPC não estiver criada) ----
       const since30 = subDays(new Date(), 30).toISOString();
