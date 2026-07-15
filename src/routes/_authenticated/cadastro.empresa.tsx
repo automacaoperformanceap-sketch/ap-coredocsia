@@ -27,6 +27,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileBundle } from "@/hooks/use-profile";
 import { ensureCurrentOrganization } from "@/lib/organizations.functions";
@@ -79,6 +89,7 @@ function EmpresaPage() {
   const [editing, setEditing] = useState<CompanyRow | null>(null);
   const [form, setForm] = useState<CompanyForm>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof CompanyForm, string>>>({});
+  const [toDelete, setToDelete] = useState<CompanyRow | null>(null);
 
   const list = useQuery({
     queryKey: ["companies", effectiveOrgId],
@@ -304,9 +315,7 @@ function EmpresaPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Remover "${c.name}"?`)) remove.mutate(c.id);
-                        }}
+                        onClick={() => setToDelete(c)}
                         aria-label="Remover"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -389,6 +398,47 @@ function EmpresaPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir empresa</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  Tem certeza que deseja excluir a empresa{" "}
+                  <span className="font-semibold text-foreground">
+                    &quot;{toDelete?.name}&quot;
+                  </span>
+                  ?
+                </p>
+                <p className="text-destructive font-medium">
+                  Esta ação é permanente e não pode ser desfeita.
+                </p>
+                <p>
+                  Todos os tipos de documento, campos de indexação e documentos
+                  já enviados vinculados a esta empresa poderão ficar
+                  inacessíveis para consulta e edição.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (toDelete) {
+                  remove.mutate(toDelete.id);
+                  setToDelete(null);
+                }
+              }}
+            >
+              Confirmar exclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
