@@ -71,7 +71,7 @@ function Dashboard() {
 
   // Agregações: chamada única a uma RPC agregada no Postgres.
   // Fallback: se a RPC ainda não foi aplicada no banco, calcula no cliente.
-  const { data, isLoading } = useQuery<DashboardData | null>({
+  const { data: stats, isLoading } = useQuery<DashboardData | null>({
     queryKey: ["dashboard-stats", orgId],
     enabled: !!orgId,
     staleTime: 60_000,
