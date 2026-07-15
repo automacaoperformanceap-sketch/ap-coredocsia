@@ -427,9 +427,8 @@ function TipoDocumentoPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Remover "${r.name}"?`)) remove.mutate(r.id);
-                        }}
+                        onClick={() => setToDelete(r)}
+
                         aria-label="Remover"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
