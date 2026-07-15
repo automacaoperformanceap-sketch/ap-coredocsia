@@ -199,14 +199,11 @@ function Dashboard() {
     },
   });
 
-  // Mescla as recentes no objeto usado pelo restante do componente.
-  const merged: DashboardData | null | undefined = data
-    ? { ...data, recent: recent ?? [] }
-    : data;
-  // Sombreia o data usado abaixo sem precisar renomear todas as referências.
-  // (a query original só carregava recent junto; agora `recent` é query separada)
-  const _data = data;
-  void _data;
+  // Merge das recentes (query independente) com as agregações vindas da RPC.
+  const data: DashboardData | null | undefined = statsData
+    ? { ...statsData, recent: recent ?? statsData.recent ?? [] }
+    : statsData;
+
 
 
 
