@@ -31,6 +31,7 @@ import { compressImageIfNeeded } from "@/lib/image-compress";
 import { pdfPagesToJpeg } from "@/lib/pdf-to-image";
 import { extractFieldsWithClaude } from "@/lib/claude.functions";
 import { extractFieldsWithGrok } from "@/lib/grok.functions";
+import { extractFieldsWithOpenAI } from "@/lib/openai.functions";
 
 import { lookupByKey } from "@/lib/lookup";
 import { cn } from "@/lib/utils";
@@ -469,15 +470,19 @@ function UploadPage() {
   const [companyId, setCompanyId] = useState<string>("none");
   const [docTypeId, setDocTypeId] = useState<string>("none");
   const [isUploading, setIsUploading] = useState(false);
-  const [isExtracting, setIsExtracting] = useState<null | "gemini" | "claude" | "grok">(null);
-  const [aiProvider, setAiProvider] = useState<"gemini" | "claude" | "grok">(() => {
+  const [isExtracting, setIsExtracting] = useState<null | "gemini" | "claude" | "grok" | "openai">(null);
+  const [aiProvider, setAiProvider] = useState<"gemini" | "claude" | "grok" | "openai">(() => {
     if (typeof window === "undefined") return "gemini";
     const saved = window.localStorage.getItem("upload:aiProvider");
-    return saved === "claude" || saved === "grok" ? saved : "gemini";
+    return saved === "claude" || saved === "grok" || saved === "openai" ? saved : "gemini";
   });
   const [grokModel, setGrokModel] = useState<string>(() => {
     if (typeof window === "undefined") return "grok-build-0.1";
     return window.localStorage.getItem("upload:grokModel") || "grok-build-0.1";
+  });
+  const [openaiModel, setOpenaiModel] = useState<string>(() => {
+    if (typeof window === "undefined") return "gpt-5.4-mini";
+    return window.localStorage.getItem("upload:openaiModel") || "gpt-5.4-mini";
   });
   const [maxPages, setMaxPages] = useState<number>(() => {
     if (typeof window === "undefined") return 1;
@@ -497,6 +502,11 @@ function UploadPage() {
   }, [grokModel]);
   useEffect(() => {
     if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:openaiModel", openaiModel);
+    }
+  }, [openaiModel]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:maxPages", String(maxPages));
     }
   }, [maxPages]);
@@ -513,6 +523,7 @@ function UploadPage() {
   const extractGeminiFn = useServerFn(extractFieldsWithGemini);
   const extractClaudeFn = useServerFn(extractFieldsWithClaude);
   const extractGrokFn = useServerFn(extractFieldsWithGrok);
+  const extractOpenAIFn = useServerFn(extractFieldsWithOpenAI);
 
   const cancelExtractRef = useRef(false);
 
