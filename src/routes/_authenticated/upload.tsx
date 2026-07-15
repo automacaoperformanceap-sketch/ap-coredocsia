@@ -1469,7 +1469,7 @@ function UploadPage() {
                   size="sm"
                   value={aiProvider}
                   onValueChange={(v) => {
-                    if (v === "gemini" || v === "claude" || v === "grok") setAiProvider(v);
+                    if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
                   }}
                   disabled={isExtracting !== null}
                   className="rounded-md border bg-background p-0.5"
@@ -1495,6 +1495,13 @@ function UploadPage() {
                     title={`Usar xAI Grok (modelo: ${grokModel})`}
                   >
                     Grok
+                  </ToggleGroupItem>
+                  <ToggleGroupItem
+                    value="openai"
+                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-700 data-[state=on]:via-teal-700 data-[state=on]:to-cyan-700 data-[state=on]:text-white"
+                    title={`Usar OpenAI (modelo: ${openaiModel})`}
+                  >
+                    OpenAI
                   </ToggleGroupItem>
                 </ToggleGroup>
                 <div
