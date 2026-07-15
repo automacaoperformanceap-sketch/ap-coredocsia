@@ -135,7 +135,7 @@ interface QueueItem {
   aiUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; log_id?: string | null } | null;
   aiOriginalValues?: Record<string, string>;
   aiStatus?: "success" | "failed" | "incomplete";
-  aiProvider?: "gemini" | "claude" | "grok";
+  aiProvider?: "gemini" | "claude" | "grok" | "openai";
   aiMessage?: string;
   expanded: boolean;
 }
@@ -676,7 +676,7 @@ function UploadPage() {
     }
   }
 
-  async function handleAutoFillAll(provider: "gemini" | "claude" | "grok") {
+  async function handleAutoFillAll(provider: "gemini" | "claude" | "grok" | "openai") {
     if (docTypeId === "none") return toast.error("Selecione o tipo de documento");
     if (fields.length === 0) return toast.error("Este tipo não tem campos de indexação");
 
@@ -698,9 +698,21 @@ function UploadPage() {
 
     const fieldsJson = JSON.stringify(fieldDefs);
     const extractFn =
-      provider === "claude" ? extractClaudeFn : provider === "grok" ? extractGrokFn : extractGeminiFn;
+      provider === "claude"
+        ? extractClaudeFn
+        : provider === "grok"
+          ? extractGrokFn
+          : provider === "openai"
+            ? extractOpenAIFn
+            : extractGeminiFn;
     const providerLabel =
-      provider === "claude" ? "Claude" : provider === "grok" ? "Grok" : "Gemini";
+      provider === "claude"
+        ? "Claude"
+        : provider === "grok"
+          ? "Grok"
+          : provider === "openai"
+            ? "OpenAI"
+            : "Gemini";
 
 
     let ok = 0;
