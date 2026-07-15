@@ -50,11 +50,45 @@ function Dashboard() {
   const { data: profile, loading } = useProfileBundle();
   const orgId = profile?.currentOrg?.id ?? null;
 
-  const { data, isLoading } = useQuery<DashboardData | null>({
-    queryKey: ["dashboard", orgId],
+  // Recentes: query leve e independente — pinta rápido, mesmo se as agregações demorarem.
+  const { data: recent } = useQuery<DocumentRow[]>({
+    queryKey: ["dashboard-recent", orgId],
     enabled: !!orgId,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("org_id", orgId!)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return (data ?? []) as DocumentRow[];
+    },
+  });
+
+  // Agregações: chamada única a uma RPC agregada no Postgres.
+  // Fallback: se a RPC ainda não foi aplicada no banco, calcula no cliente.
+  const { data, isLoading } = useQuery<DashboardData | null>({
+    queryKey: ["dashboard-stats", orgId],
+    enabled: !!orgId,
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!orgId) return null;
+
+      const rpc = await supabase.rpc("get_dashboard_stats" as never, {
+        _org_id: orgId,
+      } as never);
+
+      if (!rpc.error && rpc.data) {
+        const s = rpc.data as Omit<DashboardData, "recent">;
+        return { ...s, recent: [] } as DashboardData;
+      }
+
+      // ---- Fallback client-side (compatibilidade enquanto a RPC não estiver criada) ----
       const since30 = subDays(new Date(), 30).toISOString();
       const since7 = subDays(new Date(), 7).toISOString();
       const sinceMonth = new Date(
@@ -63,19 +97,11 @@ function Dashboard() {
         1,
       ).toISOString();
 
-      const [recentRes, companiesRes, typesRes] = await Promise.all([
-        supabase
-          .from("documents")
-          .select("*")
-          .eq("org_id", orgId)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false })
-          .limit(8),
+      const [companiesRes, typesRes] = await Promise.all([
         supabase.from("companies").select("id, name").eq("org_id", orgId),
         supabase.from("document_types").select("id, name").eq("org_id", orgId),
       ]);
 
-      // Pagina ai_usage_logs por cursor — sem isso, PostgREST limita a 1000 linhas.
       const AI_PAGE = 1000;
       const aiLogs: Array<{ cost_brl: number | null; created_at: string }> = [];
       let aiCursor: string | null = null;
@@ -96,34 +122,30 @@ function Dashboard() {
         aiCursor = aiRows[aiRows.length - 1].created_at;
       }
 
-      // Pagina por cursor para evitar o teto visual de 9.999 registros em consultas por range.
       const PAGE = 1000;
-      const all: Array<{ id: string; status: string; created_at: string; document_type_id: string | null; company_id: string | null }> = [];
+      const all: Array<{ status: string; created_at: string; document_type_id: string | null; company_id: string | null }> = [];
       let cursor: string | null = null;
       while (true) {
-        let documentsQuery = supabase
+        let q = supabase
           .from("documents")
-          .select("id, status, created_at, document_type_id, company_id")
+          .select("status, created_at, document_type_id, company_id")
           .eq("org_id", orgId)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
           .limit(PAGE);
-
-        if (cursor) documentsQuery = documentsQuery.lt("created_at", cursor);
-
-        const { data, error } = await documentsQuery;
+        if (cursor) q = q.lt("created_at", cursor);
+        const { data, error } = await q;
         if (error) throw error;
-        const rows = (data ?? []) as any[];
+        const rows = (data ?? []) as typeof all;
         all.push(...rows);
         if (rows.length < PAGE) break;
         cursor = rows[rows.length - 1].created_at;
       }
 
       const types = typesRes.data ?? [];
-
       const companies = companiesRes.data ?? [];
-      const typeMap = new Map(types.map((t: any) => [t.id, t.name]));
-      const companyMap = new Map(companies.map((c: any) => [c.id, c.name]));
+      const typeMap = new Map(types.map((t: { id: string; name: string }) => [t.id, t.name]));
+      const companyMap = new Map(companies.map((c: { id: string; name: string }) => [c.id, c.name]));
 
       const counts = { pending: 0, processing: 0, processed: 0, failed: 0 };
       let last30 = 0;
@@ -131,19 +153,19 @@ function Dashboard() {
       const typeAgg = new Map<string, number>();
       const companyAgg = new Map<string, number>();
 
-      for (const d of all as any[]) {
+      for (const d of all) {
         counts[d.status as keyof typeof counts] =
           (counts[d.status as keyof typeof counts] ?? 0) + 1;
         if (d.created_at >= since30) last30++;
         if (d.created_at >= since7) last7++;
-        const tName = typeMap.get(d.document_type_id) ?? "Sem tipo";
+        const tName = typeMap.get(d.document_type_id ?? "") ?? "Sem tipo";
         typeAgg.set(tName, (typeAgg.get(tName) ?? 0) + 1);
-        const cName = companyMap.get(d.company_id) ?? "Sem empresa";
+        const cName = companyMap.get(d.company_id ?? "") ?? "Sem empresa";
         companyAgg.set(cName, (companyAgg.get(cName) ?? 0) + 1);
       }
 
       const aiCostMonth = aiLogs.reduce(
-        (s: number, l) => s + Number(l.cost_brl ?? 0),
+        (s, l) => s + Number(l.cost_brl ?? 0),
         0,
       );
 
@@ -157,7 +179,7 @@ function Dashboard() {
         last7,
         aiCostMonth,
         aiCallsMonth: aiLogs.length,
-        recent: (recentRes.data ?? []) as DocumentRow[],
+        recent: [],
         byType: Array.from(typeAgg.entries())
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count)
@@ -171,6 +193,10 @@ function Dashboard() {
       };
     },
   });
+
+  // Mescla as recentes no objeto usado pelo restante do componente.
+  const mergedData = data ? { ...data, recent: recent ?? [] } : data;
+
 
   const firstName = profile?.profile.full_name?.split(" ")[0] ?? "usuário";
   const fmt = (n: number) => n.toLocaleString("pt-BR");
