@@ -37,8 +37,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useProfileBundle } from "@/hooks/use-profile";
+
 
 
 export const Route = createFileRoute("/_authenticated/audit")({
@@ -162,6 +173,8 @@ function AuditPage() {
   const [docTypeFilter, setDocTypeFilter] = useState<string>("__all__");
   const [page, setPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<AiLogRow | null>(null);
+
   const PAGE_SIZE = 10;
   const queryClient = useQueryClient();
 
@@ -565,35 +578,14 @@ function AuditPage() {
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         aria-label="Excluir registro"
                         disabled={deleteLog.isPending && deleteLog.variables === l.id}
-                        onClick={() => {
-                          const company = l.company_name ?? "Empresa não informada";
-                          const docType = l.document_type_name ?? "Tipo não informado";
-                          const date = formatDateTime(l.created_at);
-                          const cost =
-                            l.cost_brl != null
-                              ? `R$ ${l.cost_brl.toFixed(2).replace(".", ",")}`
-                              : "custo não calculado";
-
-                          if (
-                            window.confirm(
-                              `Excluir permanentemente este registro de auditoria?\n\n` +
-                                `Arquivo: ${l.file_name}\n` +
-                                `Empresa: ${company}\n` +
-                                `Tipo: ${docType}\n` +
-                                `Data: ${date}\n` +
-                                `Tokens: ${l.total_tokens.toLocaleString("pt-BR")} (${cost})\n\n` +
-                                `Esta ação não pode ser desfeita.`,
-                            )
-                          ) {
-                            deleteLog.mutate(l.id);
-                          }
-                        }}
+                        onClick={() => setRowToDelete(l)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
+
               </TableBody>
             </Table>
             {detailCount > PAGE_SIZE && (
@@ -627,6 +619,52 @@ function AuditPage() {
           </div>
         )}
       </Card>
+
+      <AlertDialog open={!!rowToDelete} onOpenChange={(o) => !o && setRowToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir registro de auditoria?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  Você está prestes a excluir permanentemente o seguinte registro de uso de IA.
+                  Esta ação <strong>não pode ser desfeita</strong>.
+                </p>
+                {rowToDelete && (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 space-y-1 text-xs">
+                    <div><span className="text-muted-foreground">Arquivo:</span> <strong>{rowToDelete.file_name}</strong></div>
+                    <div><span className="text-muted-foreground">Empresa:</span> {rowToDelete.company_name ?? "—"}</div>
+                    <div><span className="text-muted-foreground">Tipo:</span> {rowToDelete.document_type_name ?? "—"}</div>
+                    <div><span className="text-muted-foreground">Data:</span> {formatDateTime(rowToDelete.created_at)}</div>
+                    <div>
+                      <span className="text-muted-foreground">Tokens:</span>{" "}
+                      {rowToDelete.total_tokens.toLocaleString("pt-BR")}
+                      {rowToDelete.cost_brl != null && (
+                        <> · <span className="text-muted-foreground">Custo:</span> R$ {rowToDelete.cost_brl.toFixed(2).replace(".", ",")}</>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (rowToDelete) {
+                  deleteLog.mutate(rowToDelete.id);
+                  setRowToDelete(null);
+                }
+              }}
+            >
+              Confirmar exclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
