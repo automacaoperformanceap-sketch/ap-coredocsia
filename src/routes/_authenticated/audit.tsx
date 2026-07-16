@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient, useMutation, keepPreviousData } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   Sparkles,
   TrendingUp,
@@ -14,7 +14,6 @@ import {
   ChevronRight,
   X,
   RefreshCw,
-
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -62,6 +61,25 @@ interface AiLogRow {
   extracted_chars: number | null;
   success: boolean;
   error_message: string | null;
+}
+
+interface AuditStats {
+  totals: {
+    files: number;
+    success: number;
+    failed: number;
+    prompt: number;
+    completion: number;
+    total: number;
+    cost: number;
+    duration_count: number;
+    duration_total: number;
+    accuracy_sum: number;
+    accuracy_count: number;
+  };
+  byCompany: Array<{ name: string; files: number; tokens: number; cost: number }>;
+  companies: string[];
+  docTypes: string[];
 }
 
 function formatDateTime(iso: string) {
@@ -124,7 +142,6 @@ function exportLogsXlsx(rows: AiLogRow[]) {
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
   ws["!cols"] = headers.map((h) => ({ wch: Math.max(12, h.length + 2) }));
-  // Format % Acerto column (index 11, letter L) as percentage
   for (let i = 0; i < data.length; i++) {
     const cell = ws[XLSX.utils.encode_cell({ r: i + 1, c: 11 })];
     if (cell && typeof cell.v === "number") cell.z = "0%";
@@ -134,7 +151,8 @@ function exportLogsXlsx(rows: AiLogRow[]) {
   XLSX.writeFile(wb, `auditoria-ia-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-
+const DETAIL_COLS =
+  "id, created_at, company_name, document_type_name, file_name, model, prompt_tokens, completion_tokens, total_tokens, cost_brl, duration_ms, corrected_chars, extracted_chars, success, error_message";
 
 function AuditPage() {
   const { data: profile } = useProfileBundle();
@@ -143,169 +161,83 @@ function AuditPage() {
   const [companyFilter, setCompanyFilter] = useState<string>("__all__");
   const [docTypeFilter, setDocTypeFilter] = useState<string>("__all__");
   const [page, setPage] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
   const PAGE_SIZE = 10;
   const queryClient = useQueryClient();
 
-  const { data: logs = [], isLoading, isFetching, refetch } = useQuery({
-    queryKey: ["ai-usage-logs", orgId],
+  const companyParam = companyFilter === "__all__" ? null : companyFilter;
+  const docTypeParam = docTypeFilter === "__all__" ? null : docTypeFilter;
+  const detailsReady = companyParam !== null && docTypeParam !== null;
+
+  // Stats agregadas via RPC — sempre 1 chamada leve.
+  const { data: stats, isLoading: statsLoading, isFetching: statsFetching, refetch: refetchStats } = useQuery({
+    queryKey: ["audit-stats", orgId, companyParam, docTypeParam],
     enabled: !!orgId,
-    queryFn: async (): Promise<AiLogRow[]> => {
-      const PAGE = 1000;
-      const all: AiLogRow[] = [];
-      for (let from = 0; ; from += PAGE) {
-        const { data, error } = await supabase
-          .from("ai_usage_logs")
-          .select(
-            "id, created_at, company_name, document_type_name, file_name, model, prompt_tokens, completion_tokens, total_tokens, cost_brl, duration_ms, corrected_chars, extracted_chars, success, error_message",
-          )
-          .eq("org_id", orgId!)
-          .order("created_at", { ascending: false })
-          .range(from, from + PAGE - 1);
-        if (error) throw error;
-        const rows = (data ?? []) as AiLogRow[];
-        all.push(...rows);
-        if (rows.length < PAGE) break;
-      }
-      return all;
+    staleTime: 60_000,
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<AuditStats> => {
+      const { data, error } = await supabase.rpc("get_audit_stats", {
+        _org_id: orgId!,
+        _company: companyParam,
+        _doc_type: docTypeParam,
+      });
+      if (error) throw error;
+      return data as unknown as AuditStats;
     },
   });
 
-  const { data: orgPrice } = useQuery({
-    queryKey: ["org-ai-price", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("organizations")
-        .select("ai_cost_per_file")
-        .eq("id", orgId!)
-        .maybeSingle();
-      return Number(data?.ai_cost_per_file ?? 0.15);
+  // Detalhes paginados server-side, apenas quando empresa + tipo estão selecionados.
+  const { data: detailPage, isLoading: detailLoading, isFetching: detailFetching, refetch: refetchDetail } = useQuery({
+    queryKey: ["audit-details", orgId, companyParam, docTypeParam, search, page],
+    enabled: !!orgId && detailsReady,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<{ rows: AiLogRow[]; count: number }> => {
+      let q = supabase
+        .from("ai_usage_logs")
+        .select(DETAIL_COLS, { count: "exact" })
+        .eq("org_id", orgId!)
+        .eq("company_name", companyParam!)
+        .eq("document_type_name", docTypeParam!)
+        .order("created_at", { ascending: false });
+
+      const term = search.trim();
+      if (term) q = q.ilike("file_name", `%${term}%`);
+
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error, count } = await q.range(from, to);
+      if (error) throw error;
+      return { rows: (data ?? []) as AiLogRow[], count: count ?? 0 };
     },
   });
-
-
-  const companyOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const l of logs) if (l.company_name) set.add(l.company_name);
-    return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [logs]);
-
-  const docTypeOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const l of logs) {
-      if (!l.document_type_name) continue;
-      if (companyFilter !== "__all__" && (l.company_name ?? "") !== companyFilter) continue;
-      set.add(l.document_type_name);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [logs, companyFilter]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return logs.filter((l) => {
-      if (companyFilter !== "__all__" && (l.company_name ?? "") !== companyFilter) return false;
-      if (docTypeFilter !== "__all__" && (l.document_type_name ?? "") !== docTypeFilter) return false;
-      if (!q) return true;
-      return (
-        l.file_name.toLowerCase().includes(q) ||
-        (l.company_name ?? "").toLowerCase().includes(q) ||
-        (l.document_type_name ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [logs, search, companyFilter, docTypeFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page],
-  );
 
   useEffect(() => {
     setPage(1);
   }, [search, companyFilter, docTypeFilter]);
 
   useEffect(() => {
-    if (docTypeFilter !== "__all__" && !docTypeOptions.includes(docTypeFilter)) {
+    if (docTypeParam && stats && !stats.docTypes.includes(docTypeParam)) {
       setDocTypeFilter("__all__");
     }
-  }, [docTypeOptions, docTypeFilter]);
+  }, [stats, docTypeParam]);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
-  function computeTotals(rows: AiLogRow[]) {
-    const t = {
-      files: rows.length,
-      success: 0,
-      failed: 0,
-      prompt: 0,
-      completion: 0,
-      total: 0,
-      cost: 0,
-      durationCount: 0,
-      durationTotal: 0,
-      extracted: 0,
-      corrected: 0,
-      accuracySum: 0,
-      accuracyCount: 0,
-    };
-    for (const l of rows) {
-      if (l.success) t.success++;
-      else t.failed++;
-      t.prompt += l.prompt_tokens;
-      t.completion += l.completion_tokens;
-      t.total += l.total_tokens;
-      t.cost += l.cost_brl ?? 0;
-      if (l.duration_ms != null) {
-        t.durationCount++;
-        t.durationTotal += l.duration_ms;
-      }
-      t.extracted += l.extracted_chars ?? 0;
-      t.corrected += l.corrected_chars ?? 0;
-      if (l.extracted_chars && l.extracted_chars > 0) {
-        t.accuracySum +=
-          (Math.max(0, l.extracted_chars - (l.corrected_chars ?? 0)) / l.extracted_chars) * 100;
-        t.accuracyCount++;
-      }
-    }
-    return t;
-  }
-
-  // Cards e somatório por empresa refletem os filtros de empresa e tipo (ignoram busca textual).
-  const filteredByFacets = useMemo(() => {
-    return logs.filter((l) => {
-      if (companyFilter !== "__all__" && (l.company_name ?? "") !== companyFilter) return false;
-      if (docTypeFilter !== "__all__" && (l.document_type_name ?? "") !== docTypeFilter) return false;
-      return true;
-    });
-  }, [logs, companyFilter, docTypeFilter]);
-
-  const totals = useMemo(() => computeTotals(filteredByFacets), [filteredByFacets]);
-
-  const byCompany = useMemo(() => {
-    const map = new Map<string, { files: number; tokens: number; cost: number }>();
-    for (const l of filteredByFacets) {
-      const k = l.company_name ?? "—";
-      const cur = map.get(k) ?? { files: 0, tokens: 0, cost: 0 };
-      cur.files += 1;
-      cur.tokens += l.total_tokens;
-      cur.cost += l.cost_brl ?? 0;
-      map.set(k, cur);
-    }
-    return [...map.entries()].sort((a, b) => b[1].cost - a[1].cost);
-  }, [filteredByFacets]);
-
-  // Grid "Detalhes por arquivo" só é preenchido quando empresa E tipo estão selecionados.
-  const detailsReady = companyFilter !== "__all__" && docTypeFilter !== "__all__";
+  const totals = stats?.totals;
+  const byCompany = stats?.byCompany ?? [];
+  const companyOptions = stats?.companies ?? [];
+  const docTypeOptions = stats?.docTypes ?? [];
+  const detailRows = detailPage?.rows ?? [];
+  const detailCount = detailPage?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(detailCount / PAGE_SIZE));
 
   const deleteLog = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("ai_usage_logs").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ["ai-usage-logs", orgId] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-stats", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["audit-details", orgId] });
       toast.success("Registro excluído", {
         description: "O registro de auditoria foi removido permanentemente.",
       });
@@ -316,6 +248,45 @@ function AuditPage() {
       });
     },
   });
+
+  async function handleRefresh() {
+    await Promise.all([refetchStats(), detailsReady ? refetchDetail() : Promise.resolve()]);
+  }
+
+  async function handleExport() {
+    if (!orgId || !detailsReady) return;
+    setIsExporting(true);
+    try {
+      const PAGE = 1000;
+      const all: AiLogRow[] = [];
+      for (let from = 0; ; from += PAGE) {
+        let q = supabase
+          .from("ai_usage_logs")
+          .select(DETAIL_COLS)
+          .eq("org_id", orgId)
+          .eq("company_name", companyParam!)
+          .eq("document_type_name", docTypeParam!)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        const term = search.trim();
+        if (term) q = q.ilike("file_name", `%${term}%`);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data ?? []) as AiLogRow[];
+        all.push(...rows);
+        if (rows.length < PAGE) break;
+      }
+      exportLogsXlsx(all);
+    } catch (err) {
+      toast.error("Erro ao exportar", {
+        description: err instanceof Error ? err.message : "Tente novamente em instantes.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  const isFetching = statsFetching || detailFetching;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -343,9 +314,9 @@ function AuditPage() {
             <FileText className="absolute right-0 h-3.5 w-3.5" />
             <span>Arquivos processados</span>
           </div>
-          <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">{totals.files.toLocaleString("pt-BR")}</div>
+          <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">{(totals?.files ?? 0).toLocaleString("pt-BR")}</div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
-            {totals.success} sucesso · {totals.failed} falha
+            {totals?.success ?? 0} sucesso · {totals?.failed ?? 0} falha
           </div>
         </Card>
         <Card className="p-2.5 border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 transition-all">
@@ -354,10 +325,10 @@ function AuditPage() {
             <span>Custo total</span>
           </div>
           <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">
-            R$ {totals.cost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            R$ {Number(totals?.cost ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
-            Média R$ {(totals.files > 0 ? totals.cost / totals.files : 0).toFixed(2).replace(".", ",")} por arquivo
+            Média R$ {((totals?.files ?? 0) > 0 ? Number(totals!.cost) / totals!.files : 0).toFixed(2).replace(".", ",")} por arquivo
           </div>
         </Card>
         <Card className="p-2.5 border-0 bg-gradient-to-br from-slate-700 to-blue-900 text-white shadow-lg shadow-slate-700/20 hover:shadow-slate-700/40 hover:-translate-y-0.5 transition-all">
@@ -365,9 +336,9 @@ function AuditPage() {
             <TrendingUp className="absolute right-0 h-3.5 w-3.5" />
             <span>Tokens totais</span>
           </div>
-          <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">{totals.total.toLocaleString("pt-BR")}</div>
+          <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">{Number(totals?.total ?? 0).toLocaleString("pt-BR")}</div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
-            {totals.prompt.toLocaleString("pt-BR")} prompt · {totals.completion.toLocaleString("pt-BR")} compl.
+            {Number(totals?.prompt ?? 0).toLocaleString("pt-BR")} prompt · {Number(totals?.completion ?? 0).toLocaleString("pt-BR")} compl.
           </div>
         </Card>
         <Card className="p-2.5 border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all">
@@ -376,12 +347,12 @@ function AuditPage() {
             <span>Tempo médio IA</span>
           </div>
           <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">
-            {totals.durationCount > 0
-              ? formatDuration(Math.round(totals.durationTotal / totals.durationCount))
+            {totals && totals.duration_count > 0
+              ? formatDuration(Math.round(Number(totals.duration_total) / totals.duration_count))
               : "—"}
           </div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
-            {totals.durationCount} medições
+            {totals?.duration_count ?? 0} medições
           </div>
         </Card>
         <Card className="p-2.5 border-0 bg-gradient-to-br from-cyan-700 to-sky-800 text-white shadow-lg shadow-cyan-700/20 hover:shadow-cyan-700/40 hover:-translate-y-0.5 transition-all">
@@ -390,12 +361,12 @@ function AuditPage() {
             <span>% Acerto médio</span>
           </div>
           <div className="text-center text-2xl font-bold mt-1 tabular-nums leading-tight">
-            {totals.accuracyCount > 0
-              ? `${Math.trunc(totals.accuracySum / totals.accuracyCount)}%`
+            {totals && totals.accuracy_count > 0
+              ? `${Math.trunc(Number(totals.accuracy_sum) / totals.accuracy_count)}%`
               : "—"}
           </div>
           <div className="text-center text-[11px] text-white/85 mt-0.5">
-            Média de {totals.accuracyCount} arquivo{totals.accuracyCount === 1 ? "" : "s"}
+            Média de {totals?.accuracy_count ?? 0} arquivo{(totals?.accuracy_count ?? 0) === 1 ? "" : "s"}
           </div>
         </Card>
       </div>
@@ -417,15 +388,15 @@ function AuditPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {byCompany.map(([name, v]) => (
-                  <TableRow key={name}>
-                    <TableCell className="font-medium">{name}</TableCell>
+                {byCompany.map((v) => (
+                  <TableRow key={v.name}>
+                    <TableCell className="font-medium">{v.name}</TableCell>
                     <TableCell className="text-right">{v.files}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
-                      R$ {v.cost.toFixed(2).replace(".", ",")}
+                      R$ {Number(v.cost).toFixed(2).replace(".", ",")}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {v.tokens.toLocaleString("pt-BR")}
+                      {Number(v.tokens).toLocaleString("pt-BR")}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -441,7 +412,6 @@ function AuditPage() {
           <div className="flex items-center gap-2 flex-nowrap">
             <Select value={companyFilter} onValueChange={setCompanyFilter}>
               <SelectTrigger className="h-8 w-[170px] text-xs">
-
                 <SelectValue placeholder="Empresa" />
               </SelectTrigger>
               <SelectContent>
@@ -463,7 +433,7 @@ function AuditPage() {
               </SelectContent>
             </Select>
             <Input
-              placeholder="Buscar por arquivo, empresa ou tipo..."
+              placeholder="Buscar por arquivo..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 max-w-[220px] text-xs"
@@ -485,17 +455,17 @@ function AuditPage() {
               variant="outline"
               size="sm"
               className="gap-2"
-              disabled={filtered.length === 0}
-              onClick={() => exportLogsXlsx(filtered)}
+              disabled={!detailsReady || detailCount === 0 || isExporting}
+              onClick={handleExport}
             >
-              <Download className="h-4 w-4" /> Exportar XLSX
+              <Download className="h-4 w-4" /> {isExporting ? "Exportando…" : "Exportar XLSX"}
             </Button>
             <Button
               variant="outline"
               size="sm"
               className="gap-2"
               disabled={isFetching}
-              onClick={() => refetch()}
+              onClick={handleRefresh}
               title="Atualizar dados"
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
@@ -504,15 +474,13 @@ function AuditPage() {
           </div>
         </div>
 
-
-
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Carregando...</p>
-        ) : !detailsReady ? (
+        {!detailsReady ? (
           <p className="text-sm text-muted-foreground">
             Selecione uma <strong>empresa</strong> e um <strong>tipo de documento</strong> para exibir os detalhes por arquivo.
           </p>
-        ) : filtered.length === 0 ? (
+        ) : detailLoading || statsLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        ) : detailRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nenhuma indexação por IA registrada para os filtros selecionados.
           </p>
@@ -536,7 +504,7 @@ function AuditPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.map((l) => (
+                {detailRows.map((l) => (
                   <TableRow key={l.id}>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDateTime(l.created_at)}
@@ -587,7 +555,6 @@ function AuditPage() {
                       )}
                     </TableCell>
                     <TableCell>
-
                       <Button
                         variant="ghost"
                         size="icon"
@@ -625,10 +592,10 @@ function AuditPage() {
                 ))}
               </TableBody>
             </Table>
-            {filtered.length > PAGE_SIZE && (
+            {detailCount > PAGE_SIZE && (
               <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
                 <span className="text-xs text-muted-foreground">
-                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+                  Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, detailCount)} de {detailCount}
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
