@@ -11,16 +11,16 @@ interface FieldDef {
 }
 
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 
-/** Normaliza nomes de modelo antigos (ex.: "gemini-2.5-flash") para o formato
- *  provider/model exigido pelo Lovable AI Gateway. */
+/** Remove prefixo de gateway (ex.: "google/gemini-2.5-flash" -> "gemini-2.5-flash")
+ *  para chamada direta na Google Generative Language API. */
 function normalizeModel(name: string): string {
   if (!name) return DEFAULT_MODEL;
-  if (name.includes("/")) return name;
-  if (name.startsWith("gemini")) return `google/${name}`;
-  return name;
+  const stripped = name.includes("/") ? name.split("/").pop()! : name;
+  return stripped || DEFAULT_MODEL;
 }
+
 
 /**
  * Extrai valores de indexação da PRIMEIRA PÁGINA de um documento (PDF/imagem)
@@ -42,8 +42,9 @@ export const extractFieldsWithGemini = createServerFn({ method: "POST" })
     return data;
   })
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("LOVABLE_API_KEY não configurado no servidor");
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY não configurado no servidor");
+
 
     const file = data.get("file");
     const fieldsJson = String(data.get("fields") ?? "[]");
@@ -176,28 +177,26 @@ Regras de saída (siga RIGOROSAMENTE):
 - Se a informação não for encontrada com confiança, retorne string vazia "".`;
 
 
-    // Lovable AI Gateway (OpenAI-compatible). Aceita imagens via image_url data URI.
-    const dataUri = `data:${mimeType};base64,${base64}`;
-    const buildBody = (modelName: string) =>
+    // Google Generative Language API (direct, sem gateway).
+    const buildBody = () =>
       JSON.stringify({
-        model: modelName,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
+        contents: [
           {
             role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: dataUri } },
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64 } },
             ],
           },
         ],
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: "application/json",
+        },
       });
 
-    // Tenta o modelo principal e, em caso de sobrecarga (503/429/5xx),
-    // faz retries com backoff e por fim tenta modelos de fallback.
     const MODELS_TO_TRY = Array.from(
-      new Set([MODEL, "google/gemini-2.5-flash", "google/gemini-2.5-flash-lite"]),
+      new Set([MODEL, "gemini-2.5-flash", "gemini-2.5-flash-lite"].map(normalizeModel)),
     );
     const MAX_ATTEMPTS_PER_MODEL = 3;
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -206,18 +205,18 @@ Regras de saída (siga RIGOROSAMENTE):
     let resp: Response | null = null;
     let lastErrText = "";
     let lastStatus = 0;
-    const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
     outer: for (const modelName of MODELS_TO_TRY) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
       for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
         try {
-          const r = await fetch(GATEWAY_URL, {
+          const r = await fetch(url, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
+              "x-goog-api-key": apiKey,
             },
-            body: buildBody(modelName),
+            body: buildBody(),
           });
           if (r.ok) {
             resp = r;
@@ -244,40 +243,46 @@ Regras de saída (siga RIGOROSAMENTE):
         prompt: 0,
         completion: 0,
         total: 0,
-        error: `AI Gateway ${lastStatus || "network"}: ${lastErrText.slice(0, 200)}`,
+        error: `Gemini ${lastStatus || "network"}: ${lastErrText.slice(0, 200)}`,
       });
       const friendly =
-        lastStatus === 402
-          ? "Créditos de IA esgotados. Adicione créditos no workspace do Lovable."
+        lastStatus === 401 || lastStatus === 403
+          ? "GEMINI_API_KEY inválida. Verifique a chave no Google AI Studio."
           : lastStatus === 429
-            ? "Limite de requisições atingido. Aguarde alguns segundos e tente novamente."
+            ? "Limite de requisições atingido (Gemini). Aguarde alguns segundos."
             : lastStatus === 503
-              ? "O serviço de IA está temporariamente sobrecarregado. Tente novamente em alguns instantes."
-              : `Falha ao processar o documento (${lastStatus || "rede"}). Tente novamente.`;
+              ? "O serviço Gemini está temporariamente sobrecarregado. Tente novamente."
+              : `Falha ao processar via Gemini (${lastStatus || "rede"}): ${lastErrText.slice(0, 120)}`;
       throw new Error(friendly);
     }
 
     const json = (await resp.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      usageMetadata?: {
+        promptTokenCount?: number;
+        candidatesTokenCount?: number;
+        totalTokenCount?: number;
       };
     };
 
-    const promptTokens = json.usage?.prompt_tokens ?? 0;
-    const completionTokens = json.usage?.completion_tokens ?? 0;
+    const promptTokens = json.usageMetadata?.promptTokenCount ?? 0;
+    const completionTokens = json.usageMetadata?.candidatesTokenCount ?? 0;
     const totalTokens =
-      json.usage?.total_tokens ?? promptTokens + completionTokens;
+      json.usageMetadata?.totalTokenCount ?? promptTokens + completionTokens;
 
-    const text = json.choices?.[0]?.message?.content ?? "{}";
+    const text =
+      json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "{}";
+    const cleaned = text
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
     let extracted: Record<string, unknown> = {};
     try {
-      extracted = JSON.parse(text);
+      extracted = JSON.parse(cleaned);
     } catch {
       extracted = {};
     }
+
 
     const result: Record<string, string> = {};
     for (const f of fields) {
