@@ -578,35 +578,14 @@ function AuditPage() {
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         aria-label="Excluir registro"
                         disabled={deleteLog.isPending && deleteLog.variables === l.id}
-                        onClick={() => {
-                          const company = l.company_name ?? "Empresa não informada";
-                          const docType = l.document_type_name ?? "Tipo não informado";
-                          const date = formatDateTime(l.created_at);
-                          const cost =
-                            l.cost_brl != null
-                              ? `R$ ${l.cost_brl.toFixed(2).replace(".", ",")}`
-                              : "custo não calculado";
-
-                          if (
-                            window.confirm(
-                              `Excluir permanentemente este registro de auditoria?\n\n` +
-                                `Arquivo: ${l.file_name}\n` +
-                                `Empresa: ${company}\n` +
-                                `Tipo: ${docType}\n` +
-                                `Data: ${date}\n` +
-                                `Tokens: ${l.total_tokens.toLocaleString("pt-BR")} (${cost})\n\n` +
-                                `Esta ação não pode ser desfeita.`,
-                            )
-                          ) {
-                            deleteLog.mutate(l.id);
-                          }
-                        }}
+                        onClick={() => setRowToDelete(l)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
+
               </TableBody>
             </Table>
             {detailCount > PAGE_SIZE && (
