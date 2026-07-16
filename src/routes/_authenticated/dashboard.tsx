@@ -362,85 +362,8 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* Two-column: recentes + breakdowns */}
-      <div className="grid lg:grid-cols-3 gap-4 mb-6">
-        <Card className="lg:col-span-2 border-border/60">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Documentos recentes</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                Últimos enviados na organização
-              </p>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/documents">
-                Ver todos <ArrowRight className="h-3 w-3 ml-1" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
-            ) : !data?.recent.length ? (
-              <div className="p-10 text-center text-sm text-muted-foreground">
-                Nenhum documento enviado ainda.
-                <div className="mt-3">
-                  <Button asChild size="sm">
-                    <Link to="/upload">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Enviar primeiro documento
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <ul className="divide-y divide-border/60">
-                {data.recent.map((d) => (
-                  <li key={d.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        to="/documents/$id"
-                        params={{ id: d.id }}
-                        className="text-sm font-medium truncate block hover:text-primary"
-                      >
-                        {d.name}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(d.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                    <StatusBadge status={d.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
 
-        <div className="space-y-4">
-          <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Atividade
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Row label="Últimos 7 dias" value={fmt(data?.last7 ?? 0)} />
-              <Row label="Últimos 30 dias" value={fmt(data?.last30 ?? 0)} />
-              <Row label="Tipos cadastrados" value={fmt(data?.typesCount ?? 0)} />
-              <Row label="Empresas" value={fmt(data?.companiesCount ?? 0)} />
-              {data && data.failed > 0 && (
-                <div className="flex items-center gap-2 pt-2 border-t border-border/60 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  {fmt(data.failed)} documento(s) com falha
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+
 
       {/* Breakdowns */}
       <div className="grid md:grid-cols-2 gap-4">
