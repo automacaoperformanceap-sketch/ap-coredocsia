@@ -619,6 +619,52 @@ function AuditPage() {
           </div>
         )}
       </Card>
+
+      <AlertDialog open={!!rowToDelete} onOpenChange={(o) => !o && setRowToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir registro de auditoria?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  Você está prestes a excluir permanentemente o seguinte registro de uso de IA.
+                  Esta ação <strong>não pode ser desfeita</strong>.
+                </p>
+                {rowToDelete && (
+                  <div className="rounded-md border border-border bg-muted/40 p-3 space-y-1 text-xs">
+                    <div><span className="text-muted-foreground">Arquivo:</span> <strong>{rowToDelete.file_name}</strong></div>
+                    <div><span className="text-muted-foreground">Empresa:</span> {rowToDelete.company_name ?? "—"}</div>
+                    <div><span className="text-muted-foreground">Tipo:</span> {rowToDelete.document_type_name ?? "—"}</div>
+                    <div><span className="text-muted-foreground">Data:</span> {formatDateTime(rowToDelete.created_at)}</div>
+                    <div>
+                      <span className="text-muted-foreground">Tokens:</span>{" "}
+                      {rowToDelete.total_tokens.toLocaleString("pt-BR")}
+                      {rowToDelete.cost_brl != null && (
+                        <> · <span className="text-muted-foreground">Custo:</span> R$ {rowToDelete.cost_brl.toFixed(2).replace(".", ",")}</>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (rowToDelete) {
+                  deleteLog.mutate(rowToDelete.id);
+                  setRowToDelete(null);
+                }
+              }}
+            >
+              Confirmar exclusão
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+
   );
 }
