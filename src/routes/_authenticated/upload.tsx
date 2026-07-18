@@ -750,9 +750,10 @@ function UploadPage() {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
         const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
-        const fileForAi = shouldRasterize
+        const rasterOrCompressed = shouldRasterize
           ? await pdfPagesToJpeg(item.file, { maxPages })
           : await compressImageIfNeeded(item.file);
+        const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
         form.append("file", fileForAi);
         form.append("fields", fieldsJson);
         form.append("maxPages", String(maxPages));
