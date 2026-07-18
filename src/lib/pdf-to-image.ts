@@ -8,7 +8,8 @@ export async function pdfPagesToJpeg(
   file: File,
   opts: { maxPages?: number; maxDimension?: number; quality?: number } = {},
 ): Promise<File> {
-  const maxPages = Math.max(1, Math.floor(opts.maxPages ?? 1));
+  // maxPages === 0 significa "todas as páginas".
+  const maxPages = opts.maxPages === 0 ? 0 : Math.max(1, Math.floor(opts.maxPages ?? 1));
   const maxDimension = opts.maxDimension ?? 1600;
   const quality = opts.quality ?? 0.85;
 
@@ -30,7 +31,7 @@ export async function pdfPagesToJpeg(
   });
   const pdf = await loadingTask.promise;
   try {
-    const total = Math.min(maxPages, pdf.numPages);
+    const total = maxPages === 0 ? pdf.numPages : Math.min(maxPages, pdf.numPages);
     const rendered: { canvas: HTMLCanvasElement; width: number; height: number }[] = [];
 
     for (let p = 1; p <= total; p++) {

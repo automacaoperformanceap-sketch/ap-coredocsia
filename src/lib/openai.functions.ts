@@ -32,7 +32,7 @@ export const extractFieldsWithOpenAI = createServerFn({ method: "POST" })
     const companyId = (data.get("companyId") as string) || null;
     const documentTypeId = (data.get("documentTypeId") as string) || null;
     const maxPagesRaw = parseInt(String(data.get("maxPages") ?? "1"), 10);
-    const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw >= 1 && maxPagesRaw <= 10 ? maxPagesRaw : 1;
+    const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw >= 0 && maxPagesRaw <= 10 ? maxPagesRaw : 1;
 
     if (!(file instanceof File)) throw new Error("Arquivo ausente ou inválido");
     const uploadFile: File = file;
@@ -138,7 +138,7 @@ export const extractFieldsWithOpenAI = createServerFn({ method: "POST" })
       .join("\n");
 
     const prompt = `Você é um extrator de dados de documentos digitalizados.
-Analise ${maxPages > 1 ? `AS ${maxPages} PRIMEIRAS PÁGINAS` : "SOMENTE A PRIMEIRA PÁGINA"} do documento anexado e extraia os campos abaixo.
+Analise ${maxPages === 0 ? "TODAS AS PÁGINAS" : maxPages > 1 ? `AS ${maxPages} PRIMEIRAS PÁGINAS` : "SOMENTE A PRIMEIRA PÁGINA"} do documento anexado e extraia os campos abaixo.
 
 Campos:
 ${schemaDesc}

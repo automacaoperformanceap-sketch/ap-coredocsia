@@ -550,7 +550,7 @@ function UploadPage() {
     if (typeof window === "undefined") return 1;
     const raw = window.localStorage.getItem("upload:maxPages");
     const n = raw ? parseInt(raw, 10) : 1;
-    return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
+    return Number.isFinite(n) && n >= 0 && n <= 10 ? n : 1;
   });
   const [cropMode, setCropMode] = useState<CropMode>(() => {
     if (typeof window === "undefined") return "none";
@@ -798,14 +798,14 @@ function UploadPage() {
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
-        const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
-        const rasterOrCompressed = shouldRasterize
-          ? await pdfPagesToJpeg(item.file, { maxPages })
-          : await compressImageIfNeeded(item.file);
-        const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
-        form.append("file", fileForAi);
-        form.append("fields", fieldsJson);
-        form.append("maxPages", String(maxPages));
+      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages === 0 || maxPages > 1);
+      const rasterOrCompressed = shouldRasterize
+        ? await pdfPagesToJpeg(item.file, { maxPages })
+        : await compressImageIfNeeded(item.file);
+      const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
+      form.append("file", fileForAi);
+      form.append("fields", fieldsJson);
+      form.append("maxPages", String(maxPages));
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
@@ -943,7 +943,7 @@ function UploadPage() {
     try {
       const form = new FormData();
       const isPdf = item.file.type === "application/pdf";
-      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
+      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages === 0 || maxPages > 1);
       const rasterOrCompressed = shouldRasterize
         ? await pdfPagesToJpeg(item.file, { maxPages })
         : await compressImageIfNeeded(item.file);
@@ -1586,22 +1586,23 @@ function UploadPage() {
                     <FileText className="h-3 w-3" />
                     Páginas lidas
                   </Label>
-                  <Select
-                    value={String(maxPages)}
-                    onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
-                    disabled={isExtracting !== null}
-                  >
-                    <SelectTrigger className="h-9 w-[130px] bg-background shadow-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 5, 10].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n === 1 ? "1 página (padrão)" : `${n} páginas`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Select
+                      value={String(maxPages)}
+                      onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
+                      disabled={isExtracting !== null}
+                    >
+                      <SelectTrigger className="h-9 w-[160px] bg-background shadow-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Todas as páginas</SelectItem>
+                        {[1, 2, 3, 5, 10].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n === 1 ? "1 página (padrão)" : `${n} páginas`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                 </div>
 
                 {/* Área do documento */}
