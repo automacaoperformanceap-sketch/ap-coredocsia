@@ -51,7 +51,7 @@ export const extractFieldsWithGemini = createServerFn({ method: "POST" })
     const companyId = (data.get("companyId") as string) || null;
     const documentTypeId = (data.get("documentTypeId") as string) || null;
     const maxPagesRaw = parseInt(String(data.get("maxPages") ?? "1"), 10);
-    const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw >= 1 && maxPagesRaw <= 10 ? maxPagesRaw : 1;
+    const maxPages = Number.isFinite(maxPagesRaw) && maxPagesRaw >= 0 && maxPagesRaw <= 10 ? maxPagesRaw : 1;
 
     if (!(file instanceof File)) throw new Error("Arquivo ausente ou inválido");
     const uploadFile: File = file;
