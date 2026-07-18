@@ -23,12 +23,14 @@ import {
   ArrowDown,
   ArrowUp,
   RefreshCw,
+  Crop,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { extractFieldsWithGemini } from "@/lib/gemini.functions";
 import { compressImageIfNeeded } from "@/lib/image-compress";
 import { pdfPagesToJpeg } from "@/lib/pdf-to-image";
+import { cropImageHalf, type CropMode } from "@/lib/image-crop";
 import { extractFieldsWithClaude } from "@/lib/claude.functions";
 import { extractFieldsWithGrok } from "@/lib/grok.functions";
 import { extractFieldsWithOpenAI } from "@/lib/openai.functions";
@@ -502,6 +504,11 @@ function UploadPage() {
     const n = raw ? parseInt(raw, 10) : 1;
     return Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1;
   });
+  const [cropMode, setCropMode] = useState<CropMode>(() => {
+    if (typeof window === "undefined") return "none";
+    const saved = window.localStorage.getItem("upload:cropMode");
+    return saved === "top" || saved === "bottom" ? saved : "none";
+  });
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:aiProvider", aiProvider);
@@ -512,6 +519,11 @@ function UploadPage() {
       window.localStorage.setItem("upload:maxPages", String(maxPages));
     }
   }, [maxPages]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:cropMode", cropMode);
+    }
+  }, [cropMode]);
   const [batchProgress, setBatchProgress] = useState<{
     action: "extract" | "upload";
     current: number;
@@ -739,9 +751,10 @@ function UploadPage() {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
         const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
-        const fileForAi = shouldRasterize
+        const rasterOrCompressed = shouldRasterize
           ? await pdfPagesToJpeg(item.file, { maxPages })
           : await compressImageIfNeeded(item.file);
+        const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
         form.append("file", fileForAi);
         form.append("fields", fieldsJson);
         form.append("maxPages", String(maxPages));
@@ -883,9 +896,10 @@ function UploadPage() {
       const form = new FormData();
       const isPdf = item.file.type === "application/pdf";
       const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
-      const fileForAi = shouldRasterize
+      const rasterOrCompressed = shouldRasterize
         ? await pdfPagesToJpeg(item.file, { maxPages })
         : await compressImageIfNeeded(item.file);
+      const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
       form.append("file", fileForAi);
       form.append("fields", fieldsJson);
       form.append("maxPages", String(maxPages));
@@ -1531,6 +1545,43 @@ function UploadPage() {
                     ))}
                   </ToggleGroup>
                 </div>
+                <div
+                  className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-9"
+                  title="Recortar a imagem antes de enviar para a IA"
+                >
+                  <Crop className="h-3.5 w-3.5 text-muted-foreground" />
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    value={cropMode}
+                    onValueChange={(v) => v && setCropMode(v as CropMode)}
+                    disabled={isExtracting !== null}
+                    className="gap-0.5"
+                  >
+                    <ToggleGroupItem
+                      value="none"
+                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      title="Documento inteiro (padrão)"
+                    >
+                      Inteiro
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="top"
+                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      title="Manter apenas os 50% superiores"
+                    >
+                      Topo 50%
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="bottom"
+                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      title="Manter apenas os 50% inferiores"
+                    >
+                      Base 50%
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+
 
                 <Button
                   size="sm"
