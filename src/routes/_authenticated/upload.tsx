@@ -798,14 +798,14 @@ function UploadPage() {
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
-        const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages > 1);
-        const rasterOrCompressed = shouldRasterize
-          ? await pdfPagesToJpeg(item.file, { maxPages })
-          : await compressImageIfNeeded(item.file);
-        const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
-        form.append("file", fileForAi);
-        form.append("fields", fieldsJson);
-        form.append("maxPages", String(maxPages));
+      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages === 0 || maxPages > 1);
+      const rasterOrCompressed = shouldRasterize
+        ? await pdfPagesToJpeg(item.file, { maxPages })
+        : await compressImageIfNeeded(item.file);
+      const fileForAi = await cropImageHalf(rasterOrCompressed, cropMode);
+      form.append("file", fileForAi);
+      form.append("fields", fieldsJson);
+      form.append("maxPages", String(maxPages));
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
