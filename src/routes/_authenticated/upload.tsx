@@ -1494,12 +1494,15 @@ function UploadPage() {
 
 
         {items.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm">{items.length} arquivo(s) na fila</h3>
-              <div className="flex gap-2 flex-wrap">
+          <div className="space-y-3">
+            {/* Cabeçalho: contagem + ações de limpeza */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 items-center rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary">
+                  {items.length} arquivo(s) na fila
+                </div>
                 {items.some((i) => i.status === "done") && (
-                  <Button size="sm" variant="ghost" onClick={clearDone}>
+                  <Button size="sm" variant="ghost" onClick={clearDone} className="h-8">
                     Limpar finalizados
                   </Button>
                 )}
@@ -1509,83 +1512,97 @@ function UploadPage() {
                     variant="outline"
                     onClick={retryFailed}
                     disabled={isUploading}
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    className="h-8 border-destructive/40 text-destructive hover:bg-destructive/10"
                     title="Reenvia apenas os arquivos que falharam"
                   >
                     <RefreshCw className="h-4 w-4 mr-1" />
                     Reenviar {errorCount} com erro
                   </Button>
                 )}
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={clearAll}
+                disabled={isUploading}
+                className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                title="Remove todos os arquivos da fila"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpar fila
+              </Button>
+            </div>
 
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={clearAll}
-                  disabled={isUploading}
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  title="Remove todos os arquivos da fila"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpar fila
-                </Button>
-                <ToggleGroup
-                  type="single"
-                  size="sm"
-                  value={aiProvider}
-                  onValueChange={(v) => {
-                    if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
-                  }}
-                  disabled={isExtracting !== null}
-                  className="rounded-md border bg-background p-0.5"
-                  aria-label="Provedor de IA"
-                >
-                  <ToggleGroupItem
-                    value="gemini"
-                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-slate-800 data-[state=on]:via-blue-800 data-[state=on]:to-sky-700 data-[state=on]:text-white"
-                    title="Usar Google Gemini"
+            {/* Painel de configuração da extração por IA */}
+            <Card className="p-3 md:p-4 bg-muted/30 border-muted-foreground/10">
+              <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+                {/* Provedor */}
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Provedor de IA
+                  </Label>
+                  <ToggleGroup
+                    type="single"
+                    size="sm"
+                    value={aiProvider}
+                    onValueChange={(v) => {
+                      if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
+                    }}
+                    disabled={isExtracting !== null}
+                    className="w-full justify-start rounded-lg border bg-background p-1 shadow-sm"
+                    aria-label="Provedor de IA"
                   >
-                    Gemini
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="claude"
-                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-700 data-[state=on]:via-amber-700 data-[state=on]:to-rose-700 data-[state=on]:text-white"
-                    title="Usar Anthropic Claude"
-                  >
-                    Claude
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="grok"
-                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-black data-[state=on]:via-neutral-800 data-[state=on]:to-neutral-600 data-[state=on]:text-white"
-                    title={`Usar xAI Grok (modelo: ${grokModel})`}
-                  >
-                    Grok
-                  </ToggleGroupItem>
-                  <ToggleGroupItem
-                    value="openai"
-                    className="h-7 px-2 text-xs data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-700 data-[state=on]:via-teal-700 data-[state=on]:to-cyan-700 data-[state=on]:text-white"
-                    title={`Usar OpenAI (modelo: ${openaiModel})`}
-                  >
-                    OpenAI
-                  </ToggleGroupItem>
-                </ToggleGroup>
-                <div
-                  className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-9"
-                  title="Número de páginas iniciais que a IA irá ler para extrair os dados"
-                >
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ToggleGroupItem
+                      value="gemini"
+                      className="h-8 flex-1 md:flex-none px-3 text-xs font-medium data-[state=on]:bg-gradient-to-r data-[state=on]:from-slate-800 data-[state=on]:via-blue-800 data-[state=on]:to-sky-700 data-[state=on]:text-white data-[state=on]:shadow"
+                      title="Usar Google Gemini"
+                    >
+                      Gemini
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="claude"
+                      className="h-8 flex-1 md:flex-none px-3 text-xs font-medium data-[state=on]:bg-gradient-to-r data-[state=on]:from-orange-700 data-[state=on]:via-amber-700 data-[state=on]:to-rose-700 data-[state=on]:text-white data-[state=on]:shadow"
+                      title="Usar Anthropic Claude"
+                    >
+                      Claude
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="grok"
+                      className="h-8 flex-1 md:flex-none px-3 text-xs font-medium data-[state=on]:bg-gradient-to-r data-[state=on]:from-black data-[state=on]:via-neutral-800 data-[state=on]:to-neutral-600 data-[state=on]:text-white data-[state=on]:shadow"
+                      title={`Usar xAI Grok (modelo: ${grokModel})`}
+                    >
+                      Grok
+                    </ToggleGroupItem>
+                    <ToggleGroupItem
+                      value="openai"
+                      className="h-8 flex-1 md:flex-none px-3 text-xs font-medium data-[state=on]:bg-gradient-to-r data-[state=on]:from-emerald-700 data-[state=on]:via-teal-700 data-[state=on]:to-cyan-700 data-[state=on]:text-white data-[state=on]:shadow"
+                      title={`Usar OpenAI (modelo: ${openaiModel})`}
+                    >
+                      OpenAI
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+
+                {/* Páginas lidas */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <FileText className="h-3 w-3" />
+                    Páginas lidas
+                  </Label>
                   <ToggleGroup
                     type="single"
                     size="sm"
                     value={String(maxPages)}
                     onValueChange={(v) => v && setMaxPages(parseInt(v, 10) || 1)}
                     disabled={isExtracting !== null}
-                    className="gap-0.5"
+                    className="rounded-lg border bg-background p-1 shadow-sm"
+                    title="Número de páginas iniciais que a IA irá ler"
                   >
                     {[1, 2, 3, 5, 10].map((n) => (
                       <ToggleGroupItem
                         key={n}
                         value={String(n)}
-                        className="h-7 w-7 p-0 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        className="h-8 w-8 p-0 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
                         title={n === 1 ? "1 página (padrão)" : `${n} páginas`}
                       >
                         {n}
@@ -1593,48 +1610,68 @@ function UploadPage() {
                     ))}
                   </ToggleGroup>
                 </div>
-                <div
-                  className="flex items-center gap-1.5 rounded-md border bg-background px-2 h-9"
-                  title="Recortar a imagem antes de enviar para a IA"
-                >
-                  <Crop className="h-3.5 w-3.5 text-muted-foreground" />
-                  <ToggleGroup
-                    type="single"
-                    size="sm"
-                    value={cropMode}
-                    onValueChange={(v) => v && setCropMode(v as CropMode)}
-                    disabled={isExtracting !== null}
-                    className="gap-0.5"
-                  >
-                    <ToggleGroupItem
-                      value="none"
-                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                      title="Documento inteiro (padrão)"
+
+                {/* Recorte */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Crop className="h-3 w-3" />
+                    Área do documento
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <ToggleGroup
+                      type="single"
+                      size="sm"
+                      value={cropMode}
+                      onValueChange={(v) => v && setCropMode(v as CropMode)}
+                      disabled={isExtracting !== null}
+                      className="rounded-lg border bg-background p-1 shadow-sm"
                     >
-                      Inteiro
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="top"
-                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                      title="Manter apenas os 50% superiores"
-                    >
-                      Topo 50%
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="bottom"
-                      className="h-7 px-2 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                      title="Manter apenas os 50% inferiores"
-                    >
-                      Base 50%
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                  <CropPreviewThumb mode={cropMode} items={items} />
+                      <ToggleGroupItem
+                        value="none"
+                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                        title="Documento inteiro (padrão)"
+                      >
+                        Inteiro
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="top"
+                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                        title="Manter apenas os 50% superiores"
+                      >
+                        Topo
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="bottom"
+                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                        title="Manter apenas os 50% inferiores"
+                      >
+                        Base
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <CropPreviewThumb mode={cropMode} items={items} />
+                  </div>
                 </div>
+              </div>
 
-
+              {/* Ações principais */}
+              <div className="mt-4 flex items-center justify-end gap-2 flex-wrap border-t border-border/60 pt-3">
+                {isExtracting !== null && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      cancelExtractRef.current = true;
+                      toast.info("Cancelando após o arquivo atual...");
+                    }}
+                    disabled={cancelExtractRef.current}
+                    title="Interrompe o preenchimento por IA após o arquivo atual"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Cancelar IA
+                  </Button>
+                )}
                 <Button
                   size="sm"
-                  variant="outline"
                   onClick={() => handleAutoFillAll(aiProvider)}
                   disabled={
                     isExtracting !== null ||
@@ -1665,22 +1702,6 @@ function UploadPage() {
                     Preencher com {aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}
                   </span>
                 </Button>
-
-                {isExtracting !== null && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      cancelExtractRef.current = true;
-                      toast.info("Cancelando após o arquivo atual...");
-                    }}
-                    disabled={cancelExtractRef.current}
-                    title="Interrompe o preenchimento por IA após o arquivo atual"
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Cancelar IA
-                  </Button>
-                )}
                 <Button
                   size="sm"
                   onClick={() => handleUploadAll()}
@@ -1691,7 +1712,7 @@ function UploadPage() {
                   Enviar {items.filter((i) => i.status === "queued").length} arquivo(s)
                 </Button>
               </div>
-            </div>
+            </Card>
             <ul className="divide-y divide-border rounded-md border border-border">
               {items.map((item) => {
                 const isProcessing = batchProgress?.itemId === item.id;
