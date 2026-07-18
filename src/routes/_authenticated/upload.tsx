@@ -457,6 +457,54 @@ function ZoomablePreview({ children, initialScale = 1 }: ZoomablePreviewProps) {
   );
 }
 
+function CropPreviewThumb({ mode, items }: { mode: CropMode; items: QueueItem[] }) {
+  const firstImage = items.find(
+    (i) => i.status === "queued" && i.file.type.startsWith("image/") && i.previewUrl,
+  );
+  const thumbUrl = firstImage?.previewUrl ?? null;
+
+  const overlay =
+    mode === "none" ? null : (
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bg-foreground/55"
+        style={mode === "top" ? { top: "50%", bottom: 0 } : { top: 0, bottom: "50%" }}
+      />
+    );
+
+  const border =
+    mode === "none"
+      ? null
+      : (
+          <div
+            aria-hidden
+            className="absolute inset-x-0 border-y-2 border-primary"
+            style={mode === "top" ? { top: 0, height: "50%" } : { top: "50%", height: "50%" }}
+          />
+        );
+
+  const label =
+    mode === "none" ? "Documento inteiro" : mode === "top" ? "Topo 50% enviado à IA" : "Base 50% enviada à IA";
+
+  return (
+    <div className="flex items-center gap-2 pl-2 ml-1 border-l">
+      <div
+        className="relative h-9 w-7 overflow-hidden rounded-sm border bg-muted/40 shrink-0"
+        title={label}
+      >
+        {thumbUrl ? (
+          <img src={thumbUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-b from-muted to-muted/60" />
+        )}
+        {overlay}
+        {border}
+      </div>
+      <span className="text-[10px] text-muted-foreground leading-tight max-w-[80px]">{label}</span>
+    </div>
+  );
+}
+
 function UploadPage() {
   const { data: profile } = useProfileBundle();
   const orgId = profile?.currentOrg?.id ?? null;
@@ -1580,6 +1628,7 @@ function UploadPage() {
                       Base 50%
                     </ToggleGroupItem>
                   </ToggleGroup>
+                  <CropPreviewThumb mode={cropMode} items={items} />
                 </div>
 
 
