@@ -1535,175 +1535,178 @@ function UploadPage() {
 
             {/* Painel de configuração da extração por IA */}
             <Card className="p-3 md:p-4 bg-muted/30 border-muted-foreground/10">
-              <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-                {/* Provedor */}
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Provedor de IA
-                  </Label>
-                  <Select
-                    value={aiProvider}
-                    onValueChange={(v) => {
-                      if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
-                    }}
-                    disabled={isExtracting !== null}
-                  >
-                    <SelectTrigger className="h-10 bg-background shadow-sm">
-                      <SelectValue placeholder="Selecione o provedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gemini">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-800 to-sky-600" />
-                          Gemini
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="claude">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-700 to-rose-700" />
-                          Claude
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="grok">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-gradient-to-r from-black to-neutral-500" />
-                          Grok <span className="text-muted-foreground text-xs">({grokModel})</span>
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="openai">
-                        <span className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-gradient-to-r from-emerald-700 to-cyan-700" />
-                          OpenAI <span className="text-muted-foreground text-xs">({openaiModel})</span>
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Páginas lidas */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <FileText className="h-3 w-3" />
-                    Páginas lidas
-                  </Label>
-                  <Select
-                    value={String(maxPages)}
-                    onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
-                    disabled={isExtracting !== null}
-                  >
-                    <SelectTrigger className="h-10 w-full md:w-[160px] bg-background shadow-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 5, 10].map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {n === 1 ? "1 página (padrão)" : `${n} páginas`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Recorte */}
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Crop className="h-3 w-3" />
-                    Área do documento
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <ToggleGroup
-                      type="single"
-                      size="sm"
-                      value={cropMode}
-                      onValueChange={(v) => v && setCropMode(v as CropMode)}
+              <div className="flex flex-col gap-4">
+                {/* Linha de configurações: provedor + páginas + área */}
+                <div className="flex flex-wrap items-end gap-3">
+                  {/* Provedor de IA — select compacto */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Provedor de IA
+                    </Label>
+                    <Select
+                      value={aiProvider}
+                      onValueChange={(v) => {
+                        if (v === "gemini" || v === "claude" || v === "grok" || v === "openai") setAiProvider(v);
+                      }}
                       disabled={isExtracting !== null}
-                      className="rounded-lg border bg-background p-1 shadow-sm"
                     >
-                      <ToggleGroupItem
-                        value="none"
-                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
-                        title="Documento inteiro (padrão)"
+                      <SelectTrigger className="h-9 w-[150px] bg-background shadow-sm">
+                        <SelectValue placeholder="Provedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gemini">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-gradient-to-r from-slate-800 to-sky-600" />
+                            Gemini
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="claude">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-gradient-to-r from-orange-700 to-rose-700" />
+                            Claude
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="grok">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-gradient-to-r from-black to-neutral-500" />
+                            Grok
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="openai">
+                          <span className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-gradient-to-r from-emerald-700 to-cyan-700" />
+                            OpenAI
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Páginas lidas */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      Páginas lidas
+                    </Label>
+                    <Select
+                      value={String(maxPages)}
+                      onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
+                      disabled={isExtracting !== null}
+                    >
+                      <SelectTrigger className="h-9 w-[130px] bg-background shadow-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 5, 10].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n === 1 ? "1 página (padrão)" : `${n} páginas`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Área do documento */}
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Crop className="h-3 w-3" />
+                      Área do documento
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <ToggleGroup
+                        type="single"
+                        size="sm"
+                        value={cropMode}
+                        onValueChange={(v) => v && setCropMode(v as CropMode)}
+                        disabled={isExtracting !== null}
+                        className="rounded-lg border bg-background p-1 shadow-sm"
                       >
-                        Inteiro
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="top"
-                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
-                        title="Manter apenas os 50% superiores"
-                      >
-                        Topo
-                      </ToggleGroupItem>
-                      <ToggleGroupItem
-                        value="bottom"
-                        className="h-8 px-3 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
-                        title="Manter apenas os 50% inferiores"
-                      >
-                        Base
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                    <CropPreviewThumb mode={cropMode} items={items} />
+                        <ToggleGroupItem
+                          value="none"
+                          className="h-7 px-2.5 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                          title="Documento inteiro (padrão)"
+                        >
+                          Inteiro
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                          value="top"
+                          className="h-7 px-2.5 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                          title="Manter apenas os 50% superiores"
+                        >
+                          Topo
+                        </ToggleGroupItem>
+                        <ToggleGroupItem
+                          value="bottom"
+                          className="h-7 px-2.5 text-xs font-medium data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow"
+                          title="Manter apenas os 50% inferiores"
+                        >
+                          Base
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                      <CropPreviewThumb mode={cropMode} items={items} />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Ações principais */}
-              <div className="mt-4 flex items-center justify-end gap-2 flex-wrap border-t border-border/60 pt-3">
-                {isExtracting !== null && (
+                {/* Ações principais */}
+                <div className="flex items-center justify-end gap-2 flex-wrap border-t border-border/60 pt-3">
+                  {isExtracting !== null && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        cancelExtractRef.current = true;
+                        toast.info("Cancelando após o arquivo atual...");
+                      }}
+                      disabled={cancelExtractRef.current}
+                      title="Interrompe o preenchimento por IA após o arquivo atual"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancelar IA
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      cancelExtractRef.current = true;
-                      toast.info("Cancelando após o arquivo atual...");
-                    }}
-                    disabled={cancelExtractRef.current}
-                    title="Interrompe o preenchimento por IA após o arquivo atual"
+                    onClick={() => handleAutoFillAll(aiProvider)}
+                    disabled={
+                      isExtracting !== null ||
+                      isUploading ||
+                      docTypeId === "none" ||
+                      fields.length === 0 ||
+                      !items.some((i) => i.status === "queued")
+                    }
+                    title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}`}
+                    className={cn(
+                      "group relative overflow-hidden text-white hover:text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
+                      aiProvider === "claude"
+                        ? "bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50"
+                        : aiProvider === "grok"
+                          ? "bg-gradient-to-r from-black via-neutral-800 to-neutral-600 hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-500 shadow-black/40 hover:shadow-lg hover:shadow-neutral-700/50 text-white"
+                          : aiProvider === "openai"
+                            ? "bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-700 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-teal-700/30 hover:shadow-lg hover:shadow-cyan-500/50"
+                            : "bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50",
+                    )}
                   >
-                    <X className="h-4 w-4 mr-1" />
-                    Cancelar IA
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                    {isExtracting !== null ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
+                    )}
+                    <span className="relative">
+                      Preencher com {aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}
+                    </span>
                   </Button>
-                )}
-                <Button
-                  size="sm"
-                  onClick={() => handleAutoFillAll(aiProvider)}
-                  disabled={
-                    isExtracting !== null ||
-                    isUploading ||
-                    docTypeId === "none" ||
-                    fields.length === 0 ||
-                    !items.some((i) => i.status === "queued")
-                  }
-                  title={`Lê a 1ª página de cada arquivo e preenche os campos via ${aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}`}
-                  className={cn(
-                    "group relative overflow-hidden text-white hover:text-white border-0 shadow-md hover:-translate-y-0.5 transition-all duration-300",
-                    aiProvider === "claude"
-                      ? "bg-gradient-to-r from-orange-700 via-amber-700 to-rose-700 hover:from-orange-600 hover:via-amber-600 hover:to-rose-600 shadow-amber-700/30 hover:shadow-lg hover:shadow-amber-500/50"
-                      : aiProvider === "grok"
-                        ? "bg-gradient-to-r from-black via-neutral-800 to-neutral-600 hover:from-neutral-900 hover:via-neutral-700 hover:to-neutral-500 shadow-black/40 hover:shadow-lg hover:shadow-neutral-700/50 text-white"
-                        : aiProvider === "openai"
-                          ? "bg-gradient-to-r from-emerald-700 via-teal-700 to-cyan-700 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-teal-700/30 hover:shadow-lg hover:shadow-cyan-500/50"
-                          : "bg-gradient-to-r from-slate-800 via-blue-800 to-sky-700 hover:from-indigo-700 hover:via-blue-600 hover:to-cyan-500 shadow-blue-800/30 hover:shadow-lg hover:shadow-sky-500/50",
-                  )}
-                >
-                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                  {isExtracting !== null ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-1 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110 group-hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.9)]" />
-                  )}
-                  <span className="relative">
-                    Preencher com {aiProvider === "claude" ? "Claude" : aiProvider === "grok" ? "Grok" : aiProvider === "openai" ? "OpenAI" : "Gemini"}
-                  </span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleUploadAll()}
-                  disabled={isUploading || !items.some((i) => i.status === "queued")}
-                  className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
-                >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Enviar {items.filter((i) => i.status === "queued").length} arquivo(s)
-                </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleUploadAll()}
+                    disabled={isUploading || !items.some((i) => i.status === "queued")}
+                    className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    Enviar {items.filter((i) => i.status === "queued").length} arquivo(s)
+                  </Button>
+                </div>
               </div>
             </Card>
             <ul className="divide-y divide-border rounded-md border border-border">
