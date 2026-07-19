@@ -489,7 +489,7 @@ function CropPreviewThumb({ mode, items }: { mode: CropMode; items: QueueItem[] 
   return (
     <div className="flex items-center gap-2 pl-2 ml-1 border-l">
       <div
-        className="relative h-14 w-11 overflow-hidden rounded-sm border bg-muted/40 shrink-0"
+        className="relative h-9 w-7 overflow-hidden rounded-sm border bg-muted/40 shrink-0"
         title={label}
       >
         {thumbUrl ? (
@@ -500,7 +500,7 @@ function CropPreviewThumb({ mode, items }: { mode: CropMode; items: QueueItem[] 
         {overlay}
         {border}
       </div>
-      <span className="text-[11px] text-muted-foreground leading-tight max-w-[96px]">{label}</span>
+      <span className="text-[10px] text-muted-foreground leading-tight max-w-[80px]">{label}</span>
     </div>
   );
 }
