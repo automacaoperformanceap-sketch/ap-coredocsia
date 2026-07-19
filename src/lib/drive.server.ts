@@ -78,6 +78,13 @@ export async function ensureDocTypeFolder(parentFolderId: string, scopeKey: stri
   return createFolder(docTypeName, parentFolderId, { lovableDocTypeScope: scopeKey });
 }
 
+export async function folderExists(folderId: string): Promise<boolean> {
+  const res = await driveFetch(`/files/${folderId}?fields=id,trashed&${SHARED_DRIVE_PARAMS}`);
+  if (!res.ok) return false;
+  const json = (await res.json()) as { id?: string; trashed?: boolean };
+  return !!json.id && !json.trashed;
+}
+
 export interface DriveUploadResult {
   id: string;
   webViewLink?: string;
