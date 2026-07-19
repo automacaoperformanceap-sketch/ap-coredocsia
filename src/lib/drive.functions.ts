@@ -89,11 +89,14 @@ export const uploadDocumentToDrive = createServerFn({ method: "POST" })
     let driveWebViewLink: string | null = null;
 
     if (storeFiles) {
-      const { ensureCompanyFolder, ensureDocTypeFolder, uploadFileToDrive } =
+      const { ensureCompanyFolder, ensureDocTypeFolder, uploadFileToDrive, folderExists } =
         await import("./drive.server");
 
       // 2. Garante pasta da empresa na raiz do Drive: "Lovable - <Empresa>".
       let companyFolderId = company.drive_folder_id;
+      if (companyFolderId && !(await folderExists(companyFolderId))) {
+        companyFolderId = null;
+      }
       if (!companyFolderId) {
         companyFolderId = await ensureCompanyFolder(null, company.id, company.name);
         await supabaseAdmin
@@ -105,6 +108,9 @@ export const uploadDocumentToDrive = createServerFn({ method: "POST" })
       // 4. Garante pasta do tipo de documento (cache global no tipo, mas única por empresa via scopeKey).
       const scopeKey = `${company.id}:${docType.id}`;
       let docTypeFolderId = docType.drive_folder_id;
+      if (docTypeFolderId && !(await folderExists(docTypeFolderId))) {
+        docTypeFolderId = null;
+      }
       if (!docTypeFolderId) {
         docTypeFolderId = await ensureDocTypeFolder(companyFolderId, scopeKey, docType.name);
         await supabaseAdmin
