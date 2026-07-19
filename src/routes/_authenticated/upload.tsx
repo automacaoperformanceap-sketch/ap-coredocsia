@@ -1588,7 +1588,10 @@ function UploadPage() {
                   </Label>
                     <Select
                       value={String(maxPages)}
-                      onValueChange={(v) => setMaxPages(parseInt(v, 10) || 1)}
+                      onValueChange={(v) => {
+                        const n = parseInt(v, 10);
+                        setMaxPages(Number.isFinite(n) && n >= 0 && n <= 10 ? n : 1);
+                      }}
                       disabled={isExtracting !== null}
                     >
                       <SelectTrigger className="h-9 w-[160px] bg-background shadow-sm">
