@@ -980,6 +980,7 @@ function UploadPage() {
       itemId: item.id,
       sourcePath: item.sourcePath ?? normalizeManualSourcePath(manualSourcePathRef.current),
     });
+    setActiveItemIds((prev) => new Set(prev).add(item.id));
 
     try {
       const form = new FormData();
