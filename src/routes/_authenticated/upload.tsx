@@ -1766,11 +1766,21 @@ function UploadPage() {
                   <Button
                     size="sm"
                     onClick={() => handleUploadAll()}
-                    disabled={isUploading || !items.some((i) => i.status === "queued")}
+                    disabled={
+                      isUploading ||
+                      isExtracting !== null ||
+                      !items.some((i) => i.status === "queued" && i.aiStatus) ||
+                      items.some((i) => i.status === "queued" && !i.aiStatus)
+                    }
+                    title={
+                      items.some((i) => i.status === "queued" && !i.aiStatus)
+                        ? "Processe os arquivos com a IA antes de enviar"
+                        : undefined
+                    }
                     className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
                   >
                     <Upload className="h-4 w-4 mr-1" />
-                    Enviar {items.filter((i) => i.status === "queued").length} arquivo(s)
+                    Enviar {items.filter((i) => i.status === "queued" && i.aiStatus).length} arquivo(s)
                   </Button>
                 </div>
               </div>
@@ -1944,11 +1954,21 @@ function UploadPage() {
               <Button
                 size="sm"
                 onClick={() => handleUploadAll()}
-                disabled={isUploading || !items.some((i) => i.status === "queued")}
+                disabled={
+                  isUploading ||
+                  isExtracting !== null ||
+                  !items.some((i) => i.status === "queued" && i.aiStatus) ||
+                  items.some((i) => i.status === "queued" && !i.aiStatus)
+                }
+                title={
+                  items.some((i) => i.status === "queued" && !i.aiStatus)
+                    ? "Processe os arquivos com a IA antes de enviar"
+                    : undefined
+                }
                 className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-md shadow-indigo-500/30"
               >
                 <Upload className="h-4 w-4 mr-1" />
-                Enviar {items.filter((i) => i.status === "queued").length} arquivo(s)
+                Enviar {items.filter((i) => i.status === "queued" && i.aiStatus).length} arquivo(s)
               </Button>
             </div>
           </div>
