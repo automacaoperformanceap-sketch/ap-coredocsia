@@ -800,6 +800,11 @@ function UploadPage() {
         itemId: item.id,
         sourcePath: item.sourcePath ?? normalizeManualSourcePath(manualSourcePathRef.current),
       });
+      setActiveItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
