@@ -1067,6 +1067,12 @@ function UploadPage() {
     } finally {
       setIsExtracting(null);
       setBatchProgress(null);
+      setActiveItemIds((prev) => {
+        if (!prev.has(item.id)) return prev;
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   }
 
