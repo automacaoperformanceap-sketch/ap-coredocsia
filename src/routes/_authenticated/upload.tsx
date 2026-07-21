@@ -565,6 +565,17 @@ function UploadPage() {
     const saved = window.localStorage.getItem("upload:cropMode");
     return saved === "top" || saved === "bottom" ? saved : "none";
   });
+  const [concurrency, setConcurrency] = useState<number>(() => {
+    if (typeof window === "undefined") return 3;
+    const raw = window.localStorage.getItem("upload:concurrency");
+    const n = raw ? parseInt(raw, 10) : 3;
+    return n >= 1 && n <= 3 ? n : 3;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:concurrency", String(concurrency));
+    }
+  }, [concurrency]);
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:aiProvider", aiProvider);
