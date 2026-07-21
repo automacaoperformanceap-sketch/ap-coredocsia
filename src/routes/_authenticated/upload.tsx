@@ -565,6 +565,17 @@ function UploadPage() {
     const saved = window.localStorage.getItem("upload:cropMode");
     return saved === "top" || saved === "bottom" ? saved : "none";
   });
+  const [concurrency, setConcurrency] = useState<number>(() => {
+    if (typeof window === "undefined") return 3;
+    const raw = window.localStorage.getItem("upload:concurrency");
+    const n = raw ? parseInt(raw, 10) : 3;
+    return n >= 1 && n <= 3 ? n : 3;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("upload:concurrency", String(concurrency));
+    }
+  }, [concurrency]);
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("upload:aiProvider", aiProvider);
@@ -791,7 +802,7 @@ function UploadPage() {
     let incomplete = 0;
     let canceled = false;
     let completed = 0;
-    const CONCURRENCY = 3;
+    const CONCURRENCY = concurrency;
 
     const processOne = async (item: (typeof queued)[number]) => {
       if (cancelExtractRef.current) {
@@ -1674,6 +1685,32 @@ function UploadPage() {
                       </SelectContent>
                     </Select>
                 </div>
+
+                {/* Processamento simultâneo */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Sparkles className="h-3 w-3" />
+                    Simultâneos
+                  </Label>
+                  <Select
+                    value={String(concurrency)}
+                    onValueChange={(v) => {
+                      const n = parseInt(v, 10);
+                      setConcurrency(n >= 1 && n <= 3 ? n : 3);
+                    }}
+                    disabled={isExtracting !== null}
+                  >
+                    <SelectTrigger className="h-9 w-[120px] bg-background shadow-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 por vez</SelectItem>
+                      <SelectItem value="2">2 em paralelo</SelectItem>
+                      <SelectItem value="3">3 em paralelo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
 
                 {/* Área do documento — corte só é permitido com 1 página */}
                 <div className="space-y-1.5">
