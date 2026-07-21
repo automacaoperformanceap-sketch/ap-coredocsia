@@ -1829,7 +1829,7 @@ function UploadPage() {
                             disabled={isExtracting !== null || isUploading}
                             title={`Reprocessar com ${item.aiProvider === "claude" ? "Claude" : item.aiProvider === "grok" ? "Grok" : "Gemini"}`}
                           >
-                            {isExtracting !== null && batchProgress?.itemId === item.id ? (
+                            {isProcessing ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             ) : (
                               <RefreshCw className="h-3.5 w-3.5 mr-1" />
