@@ -143,6 +143,13 @@ interface QueueItem {
   expanded: boolean;
 }
 
+function isItemReady(item: QueueItem): boolean {
+  if (item.aiStatus) return true;
+  return Object.values(item.fieldValues ?? {}).some((v) => String(v ?? "").trim() !== "");
+}
+
+
+
 function normalizeManualSourcePath(path: string): string | null {
   const normalized = path
     .replace(/\\/g, "/")
