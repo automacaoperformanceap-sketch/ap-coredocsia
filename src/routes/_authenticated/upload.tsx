@@ -581,6 +581,7 @@ function UploadPage() {
     itemId: string;
     sourcePath: string | null;
   } | null>(null);
+  const [activeItemIds, setActiveItemIds] = useState<Set<string>>(() => new Set());
   const [extractStartedAt, setExtractStartedAt] = useState<Date | null>(null);
   const [uploadStartedAt, setUploadStartedAt] = useState<Date | null>(null);
   const extractGeminiFn = useServerFn(extractFieldsWithGemini);
@@ -799,6 +800,11 @@ function UploadPage() {
         itemId: item.id,
         sourcePath: item.sourcePath ?? normalizeManualSourcePath(manualSourcePathRef.current),
       });
+      setActiveItemIds((prev) => {
+        const next = new Set(prev);
+        next.add(item.id);
+        return next;
+      });
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
@@ -878,6 +884,13 @@ function UploadPage() {
           ),
         );
         toast.error(`${item.file.name}: ${msg}`);
+      } finally {
+        setActiveItemIds((prev) => {
+          if (!prev.has(item.id)) return prev;
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
       }
     };
 
@@ -900,6 +913,7 @@ function UploadPage() {
     await Promise.all(workers);
     setIsExtracting(null);
     setBatchProgress(null);
+    setActiveItemIds(new Set());
     cancelExtractRef.current = false;
     if (canceled) {
       toast.info(`Processamento ${providerLabel} cancelado. ${ok} ok, ${incomplete} incompleto(s), ${fail} falha(s).`);
@@ -967,6 +981,7 @@ function UploadPage() {
       itemId: item.id,
       sourcePath: item.sourcePath ?? normalizeManualSourcePath(manualSourcePathRef.current),
     });
+    setActiveItemIds((prev) => new Set(prev).add(item.id));
 
     try {
       const form = new FormData();
@@ -1053,6 +1068,12 @@ function UploadPage() {
     } finally {
       setIsExtracting(null);
       setBatchProgress(null);
+      setActiveItemIds((prev) => {
+        if (!prev.has(item.id)) return prev;
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   }
 
@@ -1756,7 +1777,7 @@ function UploadPage() {
             </Card>
             <ul className="divide-y divide-border rounded-md border border-border">
               {items.map((item) => {
-                const isProcessing = batchProgress?.itemId === item.id;
+                const isProcessing = activeItemIds.has(item.id) || batchProgress?.itemId === item.id;
                 return (
                 <li
                   key={item.id}
@@ -1808,7 +1829,7 @@ function UploadPage() {
                             disabled={isExtracting !== null || isUploading}
                             title={`Reprocessar com ${item.aiProvider === "claude" ? "Claude" : item.aiProvider === "grok" ? "Grok" : "Gemini"}`}
                           >
-                            {isExtracting !== null && batchProgress?.itemId === item.id ? (
+                            {isProcessing ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             ) : (
                               <RefreshCw className="h-3.5 w-3.5 mr-1" />
@@ -1831,7 +1852,7 @@ function UploadPage() {
                             disabled={isExtracting !== null || isUploading}
                             title={`Reprocessar com ${item.aiProvider === "claude" ? "Claude" : item.aiProvider === "grok" ? "Grok" : "Gemini"}`}
                           >
-                            {isExtracting !== null && batchProgress?.itemId === item.id ? (
+                            {isProcessing ? (
                               <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                             ) : (
                               <RefreshCw className="h-3.5 w-3.5 mr-1" />
