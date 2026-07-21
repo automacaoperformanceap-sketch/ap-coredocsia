@@ -782,15 +782,18 @@ function UploadPage() {
     let fail = 0;
     let incomplete = 0;
     let canceled = false;
-    for (let idx = 0; idx < queued.length; idx++) {
+    let completed = 0;
+    const CONCURRENCY = 3;
+
+    const processOne = async (item: (typeof queued)[number]) => {
       if (cancelExtractRef.current) {
         canceled = true;
-        break;
+        return;
       }
-      const item = queued[idx];
+      completed += 1;
       setBatchProgress({
         action: "extract",
-        current: idx + 1,
+        current: Math.min(completed, queued.length),
         total: queued.length,
         fileName: item.file.name,
         itemId: item.id,
@@ -799,21 +802,20 @@ function UploadPage() {
       try {
         const form = new FormData();
         const isPdf = item.file.type === "application/pdf";
-      const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages === 0 || maxPages > 1);
-      const rasterMeta = { fileName: item.file.name, sizeIn: item.file.size, maxPages, provider };
-      const rasterOrCompressed = shouldRasterize
-        ? await measure("pdfPagesToJpeg", () => pdfPagesToJpeg(item.file, { maxPages }), rasterMeta)
-        : await measure("compressImage", () => compressImageIfNeeded(item.file), rasterMeta);
-      // Corte só é permitido quando 1 única página é enviada à IA.
-      const effectiveCropMode: CropMode = maxPages === 1 ? cropMode : "none";
-      const fileForAi = await measure(
-        "cropImage",
-        () => cropImageHalf(rasterOrCompressed, effectiveCropMode),
-        { fileName: rasterOrCompressed.name, sizeIn: rasterOrCompressed.size, mode: effectiveCropMode },
-      );
-      form.append("file", fileForAi);
-      form.append("fields", fieldsJson);
-      form.append("maxPages", String(maxPages));
+        const shouldRasterize = isPdf && (provider === "grok" || provider === "openai" || maxPages === 0 || maxPages > 1);
+        const rasterMeta = { fileName: item.file.name, sizeIn: item.file.size, maxPages, provider };
+        const rasterOrCompressed = shouldRasterize
+          ? await measure("pdfPagesToJpeg", () => pdfPagesToJpeg(item.file, { maxPages }), rasterMeta)
+          : await measure("compressImage", () => compressImageIfNeeded(item.file), rasterMeta);
+        const effectiveCropMode: CropMode = maxPages === 1 ? cropMode : "none";
+        const fileForAi = await measure(
+          "cropImage",
+          () => cropImageHalf(rasterOrCompressed, effectiveCropMode),
+          { fileName: rasterOrCompressed.name, sizeIn: rasterOrCompressed.size, mode: effectiveCropMode },
+        );
+        form.append("file", fileForAi);
+        form.append("fields", fieldsJson);
+        form.append("maxPages", String(maxPages));
         if (companyId !== "none") form.append("companyId", companyId);
         if (docTypeId !== "none") form.append("documentTypeId", docTypeId);
         if (provider === "grok") form.append("model", grokModel);
@@ -827,15 +829,12 @@ function UploadPage() {
           values: Record<string, string>;
           usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number; model: string; log_id?: string | null };
         };
-        // Normaliza os valores da IA com o mesmo sanitize aplicado ao digitar,
-        // para que a baseline reflita o que ficaria salvo sem nenhuma edição.
         const sanitizedAi: Record<string, string> = {};
         for (const f of fields) {
           const v = res.values?.[f.field_key];
           if (v != null) sanitizedAi[f.field_key] = sanitizeFieldValue(f, String(v));
         }
         const mergedValues = { ...item.fieldValues, ...sanitizedAi };
-
         const missingRequired = fields.filter(
           (f) => f.required && !String(mergedValues[f.field_key] ?? "").trim(),
         );
@@ -848,7 +847,6 @@ function UploadPage() {
                   ...i,
                   fieldValues: mergedValues,
                   aiOriginalValues: { ...sanitizedAi },
-
                   aiUsage: res.usage,
                   aiStatus: isIncomplete ? "incomplete" : "success",
                   aiProvider: provider,
@@ -881,7 +879,25 @@ function UploadPage() {
         );
         toast.error(`${item.file.name}: ${msg}`);
       }
+    };
+
+    // Worker pool: processa até CONCURRENCY itens em paralelo mantendo
+    // uma fila FIFO. Reduz o tempo total dominado por latência de rede/IA.
+    let cursor = 0;
+    const workers: Promise<void>[] = [];
+    for (let w = 0; w < Math.min(CONCURRENCY, queued.length); w++) {
+      workers.push(
+        (async () => {
+          while (!cancelExtractRef.current) {
+            const myIdx = cursor++;
+            if (myIdx >= queued.length) return;
+            await processOne(queued[myIdx]);
+          }
+          canceled = true;
+        })(),
+      );
     }
+    await Promise.all(workers);
     setIsExtracting(null);
     setBatchProgress(null);
     cancelExtractRef.current = false;
