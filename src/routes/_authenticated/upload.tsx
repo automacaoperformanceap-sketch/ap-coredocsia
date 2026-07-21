@@ -40,6 +40,16 @@ import { lookupByKey } from "@/lib/lookup";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -558,6 +568,7 @@ function UploadPage() {
 
   const topAnchorRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [companyId, setCompanyId] = useState<string>("none");
   const [docTypeId, setDocTypeId] = useState<string>("none");
@@ -1275,9 +1286,12 @@ function UploadPage() {
 
 
   function clearAll() {
-    if (isUploading) return;
-    if (!confirm("Remover todos os arquivos da fila?")) return;
+    if (isUploading || items.length === 0) return;
+    setClearConfirmOpen(true);
+  }
+  function confirmClearAll() {
     setItems([]);
+    setClearConfirmOpen(false);
   }
 
   const queuedCount = items.filter((i) => i.status === "queued").length;
@@ -1623,13 +1637,37 @@ function UploadPage() {
                 size="sm"
                 variant="ghost"
                 onClick={clearAll}
-                disabled={isUploading}
+                disabled={isUploading || items.length === 0}
                 className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                 title="Remove todos os arquivos da fila"
               >
                 <X className="h-4 w-4 mr-1" />
                 Limpar fila
               </Button>
+              <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Limpar fila?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Isso remove {items.length} arquivo{items.length === 1 ? "" : "s"} desta lista de
+                      upload
+                      {queuedCount > 0
+                        ? ` — incluindo ${queuedCount} ainda não processado${queuedCount === 1 ? "" : "s"}, que ser${queuedCount === 1 ? "á descartado" : "ão descartados"}`
+                        : ""}
+                      . Documentos já salvos não são afetados. Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={confirmClearAll}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Limpar fila
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
             {/* Painel de configuração da extração por IA */}
