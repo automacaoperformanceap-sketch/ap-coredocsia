@@ -913,6 +913,7 @@ function UploadPage() {
     await Promise.all(workers);
     setIsExtracting(null);
     setBatchProgress(null);
+    setActiveItemIds(new Set());
     cancelExtractRef.current = false;
     if (canceled) {
       toast.info(`Processamento ${providerLabel} cancelado. ${ok} ok, ${incomplete} incompleto(s), ${fail} falha(s).`);
